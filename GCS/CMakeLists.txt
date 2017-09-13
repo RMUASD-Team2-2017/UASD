@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ground_control_station)
 
+## Compile as C++11, supported in ROS Kinetic and newer
+ add_compile_options(-std=c++11)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -114,6 +117,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -131,7 +135,7 @@ include_directories(
 add_executable(gcs_control_node src/gcs_control_node.cpp)
 add_executable(docking_station_node src/docking_station_node.cpp)
 add_executable(drone_communication_node src/drone_communication_node.cpp)
-add_executable(path_planner_node src/path_planner_node.cpp)
+add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
