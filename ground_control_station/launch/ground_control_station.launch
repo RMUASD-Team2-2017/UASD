@@ -1,0 +1,9 @@
+<launch>
+
+	<!-- Launch all nodes on the Ground Control Station /-->
+   <node name = "gcs_control" pkg = "ground_control_station" type = "gcs_control_node" respawn = "true"/>
+   <node name = "docking_station" pkg = "ground_control_station" type = "docking_station_node" respawn = "true"/>
+   <node name = "drone_comm" pkg = "ground_control_station" type = "drone_communication_node" respawn = "true"/>
+   <node name = "path_planner" pkg = "ground_control_station" type = "path_planner_node" respawn = "true"/>
+
+</launch>
