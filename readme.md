@@ -6,7 +6,7 @@
 
 - Clone this repository into the source folder of a catkin workspace.
 
-  * e.g. cd ~/catkin_ws/src/ && git clone https://github.com/RMUASD-Team2-2017/UASD.git ground_control_station
+  * e.g. cd ~/catkin_ws/src/ && git clone https://github.com/RMUASD-Team2-2017/UASD.git GCS
   
 - Invoke catkin_make from the root of the catkin workspace.
 
