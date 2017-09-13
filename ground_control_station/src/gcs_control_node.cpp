@@ -8,6 +8,21 @@
 
 class GCS_CONTROL_CLASS
 {
+	// Monitor docking station
+
+	// Receive distress call from database
+	
+	// Initiate pre-flight check
+	
+	// Open docking station
+	
+	// Perform path planning
+	
+	// Upload path to drone and initiate flight
+	
+	// Monitor the flight
+	
+	// Send data to Flight Control Center
 
 };
 
