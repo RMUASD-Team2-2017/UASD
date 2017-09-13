@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<center>
+<h2>RMUASD</h2>
+<h1>AAEDD</h1>
+<p><i><strong>A</strong>utonomous <strong>AED</strong> <strong>D</strong>elivery</i></p>
+<div id="buttons">
+  <button onclick="getLocation()">Request AED - Static</button>
+  <br>
+  <button onclick="getLocationDynamic()">Request AED - Dynamic</button>
+</div>
+</center>
+<br>
+
+<p id="Info"></p>
+<p id="Lat"></p>
+<p id="Lon"></p>
+<p id="ExtraInfo"></p>
+<p id="Error"></p>
+
+<div id="mapholder"></div>
+
+<div id="googleMap" style="width:100%;height:400px;"></div>
+
+<script>
+var InfoHolder = document.getElementById("Info");
+var LatHolder = document.getElementById("Lat");
+var LonHolder = document.getElementById("Lon");
+var ExtraInfoHolder = document.getElementById("ExtraInfo");
+var ErrorHolder = document.getElementById("Error");
+
+var buttonsDiv = document.getElementById("buttons");
+
+function getLocation() {
+	buttonsDiv.style.display = 'none';
+    if (navigator.geolocation) {
+    	InfoHolder.innerHTML = "<strong>Static information:</strong>";
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+    } else { 
+        InfoHolder.innerHTML = "Geolocation is not supported by this browser.";
+    }
+}
+
+function getLocationDynamic() {
+	buttonsDiv.style.display = 'none';
+    if (navigator.geolocation) {
+    	InfoHolder.innerHTML = "<strong>Dynamic information:</strong>";
+        navigator.geolocation.watchPosition(showPosition, showError);
+    } else { 
+        InfoHolder.innerHTML = "Geolocation is not supported by this browser.";}
+    }
+
+function showPosition(position) {
+    LatHolder.innerHTML = "Latitude: " + position.coords.latitude;
+    LonHolder.innerHTML = "Longitude: " + position.coords.longitude;
+    ExtraInfo.innerHTML = "Accuracy: " + position.coords.accuracy + "<br>"
+    + "Timestamp: " + position.timestamp + "<br>"
+    + "Altitude: " + position.coords.altitude + "<br>"
+    + "Altitude accuracy: " + position.coords.altitudeAccuracy + "<br>"
+    + "Heading: " + position.coords.heading + "<br>"
+    + "Speed: " + position.coords.speed;
+    // Note that the more which is being returned the slower it becomes.
+
+    
+    var latlon = position.coords.latitude + "," + position.coords.longitude;
+    var img_url = "https://maps.googleapis.com/maps/api/staticmap?center="
+    +latlon+"&zoom=14&size=400x300&key=AIzaSyDTHa8VL03UUNRQdlxNm99TaUzTsK2v6Ls";
+    document.getElementById("mapholder").innerHTML = "<img src='"+img_url+"'>";
+    
+    LatLng = {lat: position.coords.latitude, lng: position.coords.longitude};
+    myMap(LatLng);
+}
+//To use this code on your website, get a free API key from Google.
+//Read more at: https://www.w3schools.com/graphics/google_maps_basic.asp
+
+function showError(error) {
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            ErrorHolder.innerHTML = "User denied the request for Geolocation."
+            break;
+        case error.POSITION_UNAVAILABLE:
+            ErrorHolder.innerHTML = "Location information is unavailable."
+            break;
+        case error.TIMEOUT:
+            ErrorHolder.innerHTML = "The request to get user location timed out."
+            break;
+        case error.UNKNOWN_ERROR:
+            ErrorHolder.innerHTML = "An unknown error occurred."
+            break;
+    }
+}
+
+function myMap(myLatLng) {
+    //var myLatLng = {lat: 55.395302199999996, lng: 10.371599};
+
+    // Create a map object and specify the DOM element for display.
+    // Similar way to exclude additional show: var map = new google.maps.Map(document.getElementById('map'), {
+    var mapProp= {
+        //center:new google.maps.LatLng(51.508742,-0.120850),
+        center: myLatLng,
+        mapTypeId: 'satellite',
+        zoom:16,
+    };      
+    var map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
+
+    // Create a marker and set its position.
+    var marker = new google.maps.Marker({
+      map: map,
+      position: myLatLng,
+      title: 'Your Position'
+    });
+}
+
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTHa8VL03UUNRQdlxNm99TaUzTsK2v6Ls&callback=myMap"
+        async defer></script>
+
+</body>
+</html>
+
