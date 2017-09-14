@@ -16,6 +16,12 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+################################################
+## GeographicLib                              ##
+################################################
+find_package(GeographicLib REQUIRED)
+include_directories (${GeographicLib_INCLUDE_DIRS})
+add_definitions (${GeographicLib_DEFINITIONS})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -148,7 +154,7 @@ add_dependencies(path_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_
 target_link_libraries(gcs_control_node ${catkin_LIBRARIES})
 target_link_libraries(docking_station_node ${catkin_LIBRARIES})
 target_link_libraries(drone_communication_node ${catkin_LIBRARIES})
-target_link_libraries(path_planner_node ${catkin_LIBRARIES})
+target_link_libraries(path_planner_node ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
 
 #############
 ## Install ##

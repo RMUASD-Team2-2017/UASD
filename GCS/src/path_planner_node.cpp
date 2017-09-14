@@ -77,6 +77,13 @@ int main(int argc, char** argv)
 	//ROS_INFO("%i",points.size());
 
 	ROS_INFO("main result: %i",result);
+
+	point geodetic_p;
+	geodetic_p.lat = 54.4038;
+	geodetic_p.lon = 10.4024;
+	ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
+	fence.geodetic_to_UTM(geodetic_p);
+	ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
 	ros::spin();
   return 0;
 }

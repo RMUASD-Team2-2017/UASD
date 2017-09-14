@@ -57,12 +57,28 @@ bool geofence::set(std::string geofence_path, std::string obstacle_path)
 
 void geofence::set_fence(std::vector<point> _fence)
 {
-  fence = _fence;
+  if(USE_UTM){
+    for(int i=0; i < _fence.size(); i++)
+    {
+      geodetic_to_UTM(_fence[i]);
+    }
+    fence = _fence;
+  }
   //ROS_INFO("Obstacles size %i, with %i points in first",obstacles.size(),obstacles[0].points.size());
 }
 
 void geofence::set_obstacles(std::vector<obstacle> _obstacles)
 {
+  if(USE_UTM)
+  {
+    for(int i=0; i < _obstacles.size(); i++)
+    {
+      for(int j=0; j < _obstacles[i].points.size(); j++)
+      {
+        geodetic_to_UTM(_obstacles[i].points[i]);
+      }
+    }
+  }
   obstacles = _obstacles;
 }
 
@@ -76,6 +92,7 @@ bool geofence::point_legal(point test_point)
   if(test_point.alt > max_altitude )
     return false;
 
+  if(USE_UTM) geodetic_to_UTM(test_point);
   bool point_ok = false;
   // Check geofence
   point_ok = inside_polygon(fence, test_point);
@@ -97,6 +114,7 @@ bool geofence::point_legal(point test_point)
 
 bool geofence::edge_legal(point p1, point p2)
 {
+  // TODO: The pertubation needs to be done using UTM in some way
   bool result = true;
   // Make vector between points
   double vec_x = p2.lon - p1.lon;
@@ -166,4 +184,24 @@ bool geofence::inside_polygon(std::vector<point> _fence, point test_point)
          inside_polygon = !inside_polygon;
   }
   return inside_polygon;
+}
+
+bool geofence::geodetic_to_UTM(point &p)
+{
+  double lon0 = ((UTM_zone -1)*6-180+3);
+  ROS_INFO("lon0: %f",lon0);
+  try
+  {
+    GeographicLib::TransverseMercatorExact proj(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f(), GeographicLib::Constants::UTM_k0());
+    point local_point;
+    proj.Forward(lon0,p.lat,p.lon,local_point.lat,local_point.lon);
+    p = local_point;
+  }
+  catch (const std::exception& e){
+    std::stringstream error;
+    error << e.what();
+    ROS_ERROR("Exception %s",error.str().c_str());
+    return false;
+  }
+  return true;
 }

@@ -1,6 +1,9 @@
 #pragma once
 
+// General ROS
 #include <ros/ros.h>
+
+// General
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -9,9 +12,16 @@
 #include <stdlib.h>
 #include <vector>
 
+// Geographic lib
+#include <exception>
+#include <sstream>
+#include <iomanip>
+#include <GeographicLib/TransverseMercatorExact.hpp>
+
 #define lat_index 2
 #define lon_index 3
 #define STEP_SIZE 0.01
+#define USE_UTM true
 
 struct point{
   double lat;
@@ -36,10 +46,12 @@ public:
   bool point_legal(point);
   bool edge_legal(point, point);
   bool inside_polygon(std::vector<point> _fence, point test_point);
+  bool geodetic_to_UTM(point &);
+  
 private:
   //split(const std::string& str, std::vector<std::string>& cont, char delim = ' ')
-
   std::vector<point> fence;
   std::vector<obstacle> obstacles;
   double max_altitude;
+  int UTM_zone = 32;
 };
