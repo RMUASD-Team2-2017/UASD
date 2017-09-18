@@ -48,10 +48,8 @@ public:
   void set_max_altitude(double);
   bool point_legal(point);
   bool edge_legal(point, point);
-
   bool geodetic_to_UTM(point &);
   bool self_test();
-
 
 private:
   bool inside_polygon(std::vector<point> _fence, point test_point);

@@ -9,6 +9,7 @@ geofence::~geofence()
 {}
 
 // This function is not working. It should load the geofence from file
+// It is kept just to get the idea, until we can get it from the server.
 bool geofence::set(std::string geofence_path, std::string obstacle_path)
 {
   std::ifstream geofence_file ("/home/mathias/Downloads/Geofence.csv");//geofence_path);
