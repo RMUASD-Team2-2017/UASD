@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>ground_control_station</name>
+  <name>gcs</name>
   <version>0.0.0</version>
   <description>ROS Package for ground control of resuscitation drones.</description>
 
