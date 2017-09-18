@@ -1,1 +1,1 @@
-waypoint [] path
+waypoint[] path

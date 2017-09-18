@@ -7,9 +7,9 @@
 
 // ROS
 #include <ros/ros.h>
-#include "gcs/planPath.srv"
-#include "gcs/waypoint.msg"
-#include "gcs/path.msg"
+#include "gcs/planPath.h"
+#include "gcs/waypoint.h"
+#include "gcs/path.h"
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -23,12 +23,13 @@
 class PATH_PLANNER_CLASS
 {
 public:
-	PATH_PLANNER_CLASS(ros::NodeHandle);
+	PATH_PLANNER_CLASS(ros::NodeHandle n);
 	~PATH_PLANNER_CLASS();
-
+	bool isRunning();
+	void planPath();
 private:
 	// Methods
-	void planPath();
+
 
 	// Attributes
 	ros::NodeHandle nh;
@@ -38,7 +39,7 @@ private:
 
 
 	// Services
-	ros::Serviceserver planPathService;
+	ros::ServiceServer planPathService;
 	bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Response &res);
 
 	// Published topics
@@ -46,17 +47,17 @@ private:
 
 };
 
-PATH_PLANNER_CLASS(ros::NodeHandle n)
+PATH_PLANNER_CLASS::PATH_PLANNER_CLASS(ros::NodeHandle n)
 {
 	nh = n;
-	planPathService = nh.advertiseService("/"+PATH_PLANNER_CLASS+"/plan",callbackPlanPathService, this);
-	pathPublisher = nh.advertise<gcs::path>("/"+PATH_PLANNER_CLASS+"/path",1);
+	planPathService = nh.advertiseService("/path_planner/plan",&PATH_PLANNER_CLASS::callbackPlanPathService, this);
+	pathPublisher = nh.advertise<gcs::path>("/path_planner/path",1);
 }
 
-~PATH_PLANNER_CLASS()
+PATH_PLANNER_CLASS::~PATH_PLANNER_CLASS()
 {}
 
-bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Response &res)
+bool PATH_PLANNER_CLASS::callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Response &res)
 {
 	if(isPlanning)
 	{
@@ -66,24 +67,32 @@ bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Respons
 	{
 		origin = req.origin;
 		goal = req.goal;
+		isPlanning = true;
 		res.result = 0;
 	}
 }
 
-void planPath()
+void PATH_PLANNER_CLASS::planPath()
 {
+	// NOTE: Implement a better path planner and use geofence
 	gcs::path plannedPath;
-	origin.altitude = CRUISE_HEIGHT;
+	origin.alt = CRUISE_HEIGHT;
 	origin.type = TAKEOFF;
 	plannedPath.path.push_back(origin);
-	gcs::waypoints goal_land;
-	goal.altitude = CRUISE_HEIGHT;
+	gcs::waypoint goal_land = goal;
+	goal.alt = CRUISE_HEIGHT;
 	goal.type = WAYPOINT;
 	plannedPath.path.push_back(goal);
-	goal.altitude = 0;
+	goal_land.alt = 0;
 	goal.type = LAND;
 	plannedPath.path.push_back(goal_land);
 	pathPublisher.publish(plannedPath);
+	isPlanning = false;
+}
+
+bool PATH_PLANNER_CLASS::isRunning()
+{
+	return isPlanning;
 }
 
 
@@ -92,7 +101,8 @@ void planPath()
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, VALUE_AS_STRING(PATH_PLANNER_CLASS));
-  PATH_PLANNER_CLASS pp;
+	ros::NodeHandle n;
+  PATH_PLANNER_CLASS planner(n);
 
 // GEOFENCE TESTING!
 	geofence fence;
@@ -163,6 +173,12 @@ int main(int argc, char** argv)
 	//ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
 	//fence.test_UTM();
 	fence.self_test();
-	ros::spin();
+
+	while(ros::ok())
+	{
+		if(planner.isRunning())
+			planner.planPath();
+		ros::spinOnce();
+	}
   return 0;
 }
