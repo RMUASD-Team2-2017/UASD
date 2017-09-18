@@ -1,17 +1,93 @@
-#include <ros/ros.h>
-#include "geofence.h"
+//General
 #include <vector>
+#include <string>
+
+// Custom
+#include "geofence.h"
+
+// ROS
+#include <ros/ros.h>
+#include "gcs/planPath.srv"
+#include "gcs/waypoint.msg"
+#include "gcs/path.msg"
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
 
 #define PATH_PLANNER_CLASS path_planner
-
+#define CRUISE_HEIGHT 30
+#define TAKEOFF 0
+#define WAYPOINT 1
+#define LAND 2
 
 class PATH_PLANNER_CLASS
 {
-	// TODO Implement service planPath()
+public:
+	PATH_PLANNER_CLASS(ros::NodeHandle);
+	~PATH_PLANNER_CLASS();
+
+private:
+	// Methods
+	void planPath();
+
+	// Attributes
+	ros::NodeHandle nh;
+	bool isPlanning = false;
+	gcs::waypoint origin;
+	gcs::waypoint goal;
+
+
+	// Services
+	ros::Serviceserver planPathService;
+	bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Response &res);
+
+	// Published topics
+	ros::Publisher pathPublisher;
+
 };
+
+PATH_PLANNER_CLASS(ros::NodeHandle n)
+{
+	nh = n;
+	planPathService = nh.advertiseService("/"+PATH_PLANNER_CLASS+"/plan",callbackPlanPathService, this);
+	pathPublisher = nh.advertise<gcs::path>("/"+PATH_PLANNER_CLASS+"/path",1);
+}
+
+~PATH_PLANNER_CLASS()
+{}
+
+bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Response &res)
+{
+	if(isPlanning)
+	{
+		res.result = 1;
+	}
+	else
+	{
+		origin = req.origin;
+		goal = req.goal;
+		res.result = 0;
+	}
+}
+
+void planPath()
+{
+	gcs::path plannedPath;
+	origin.altitude = CRUISE_HEIGHT;
+	origin.type = TAKEOFF;
+	plannedPath.path.push_back(origin);
+	gcs::waypoints goal_land;
+	goal.altitude = CRUISE_HEIGHT;
+	goal.type = WAYPOINT;
+	plannedPath.path.push_back(goal);
+	goal.altitude = 0;
+	goal.type = LAND;
+	plannedPath.path.push_back(goal_land);
+	pathPublisher.publish(plannedPath);
+}
+
+
+
 
 int main(int argc, char** argv)
 {
