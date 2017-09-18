@@ -16,7 +16,8 @@
 #include <exception>
 #include <sstream>
 #include <iomanip>
-#include <GeographicLib/TransverseMercatorExact.hpp>
+//#include <GeographicLib/TransverseMercatorExact.hpp>
+#include <GeographicLib/TransverseMercator.hpp>
 
 #define lat_index 2
 #define lon_index 3
@@ -47,7 +48,7 @@ public:
   bool edge_legal(point, point);
   bool inside_polygon(std::vector<point> _fence, point test_point);
   bool geodetic_to_UTM(point &);
-  
+
 private:
   //split(const std::string& str, std::vector<std::string>& cont, char delim = ' ')
   std::vector<point> fence;

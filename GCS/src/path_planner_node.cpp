@@ -79,8 +79,10 @@ int main(int argc, char** argv)
 	ROS_INFO("main result: %i",result);
 
 	point geodetic_p;
-	geodetic_p.lat = 54.4038;
-	geodetic_p.lon = 10.4024;
+	//geodetic_p.lat = 55.0000000000;
+	//geodetic_p.lon = 009.0000000000;
+	geodetic_p.lat = 55.403756;
+	geodetic_p.lon = 10.40237;
 	ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
 	fence.geodetic_to_UTM(geodetic_p);
 	ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);

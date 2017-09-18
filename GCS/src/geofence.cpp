@@ -188,13 +188,19 @@ bool geofence::inside_polygon(std::vector<point> _fence, point test_point)
 
 bool geofence::geodetic_to_UTM(point &p)
 {
-  double lon0 = ((UTM_zone -1)*6-180+3);
+  ROS_INFO("UTM_zone: %i", UTM_zone);
+  double lon0 = (((double)UTM_zone -1)*6-180+3);
   ROS_INFO("lon0: %f",lon0);
   try
   {
-    GeographicLib::TransverseMercatorExact proj(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f(), GeographicLib::Constants::UTM_k0());
+    GeographicLib::TransverseMercator proj(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f(), GeographicLib::Constants::UTM_k0());
     point local_point;
     proj.Forward(lon0,p.lat,p.lon,local_point.lat,local_point.lon);
+    ROS_INFO("geodetic_to_UTM: %f,%f",local_point.lat,local_point.lon);
+    point reverse;
+    proj.Reverse(lon0,local_point.lat,local_point.lon, reverse.lat, reverse.lon);
+    ROS_INFO("reverse: %f,%f",reverse.lat,reverse.lon);
+
     p = local_point;
   }
   catch (const std::exception& e){
