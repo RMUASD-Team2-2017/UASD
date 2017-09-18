@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+// TODO Include waypoint list message type
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -8,7 +9,7 @@
 
 class PATH_PLANNER_CLASS
 {
-
+	// TODO Implement service planPath()
 };
 
 int main(int argc, char** argv)

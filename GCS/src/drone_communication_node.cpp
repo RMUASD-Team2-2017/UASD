@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+// TODO Include mavlink to/from message types
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -8,6 +9,9 @@
 
 class DRONE_COMM_CLASS
 {
+	// TODO Implement service uploadWaypoints()
+	
+	// TODO Implement service monitorFlight()
 
 };
 

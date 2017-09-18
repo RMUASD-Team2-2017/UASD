@@ -1,28 +1,48 @@
 #include <ros/ros.h>
+// TODO Include custom message type dock_data_msg
+// TODO Include GPS message type
+// TODO Include mavlink to/from message types
+// TODO Include waypoint list message type
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
 
 #define GCS_CONTROL_CLASS gcs_control
 
-
 class GCS_CONTROL_CLASS
 {
-	// Monitor docking station
+	// 1 Monitor docking station
+	// - Call service monitorDock() from docking_station_node
+	// TODO
 
-	// Receive distress call from database
+	// 2 Receive distress call from database
+	// - Http get GPS position and timestamp from database
+	// TODO
 	
-	// Initiate pre-flight check
+	// 3 Initiate pre-flight check
+	// - Call service preflight() from pre_flight_node
+	// TODO
 	
-	// Open docking station
+	// 4 Perform path planning
+	// - Call service planPath() from path_planner_node
+	// TODO
 	
-	// Perform path planning
+	// 5 Open docking station
+	// - Call service openDock() from docking_station_node
+	// TODO
 	
-	// Upload path to drone and initiate flight
+	// 6 Upload path to drone and initiate flight
+	// - Call service uploadWaypoints() from drone_communication_node
+	// TODO
 	
-	// Monitor the flight
+	// 7 Monitor the flight (Error procedure)
+	// - Call service monitorFlight() from drone_communication_node subscribing to mavlink/from
+	// - In case of extended link loss, do something
+	// TODO
 	
-	// Send data to Flight Control Center
+	// 8 Update database
+	// - Http post flight information (heartbeat, battery voltage, etc.) to database
+	// TODO
 
 };
 
