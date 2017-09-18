@@ -31,7 +31,7 @@ bool geofence::set(std::string geofence_path, std::string obstacle_path)
       //p.lon = std::atof(splitted[lon_index].c_str());
       //fence.push_back(p);
 
-      ROS_INFO("%i",splitted.size());
+      if(DEBUG) ROS_INFO("%i",splitted.size());
       //ROS_INFO("%s",splitted[lat_index]);
     }
 
@@ -41,7 +41,7 @@ bool geofence::set(std::string geofence_path, std::string obstacle_path)
   }
   else
   {
-    ROS_INFO("Not open");
+    if(DEBUG) ROS_INFO("Not open");
     return false;
   }
 }
@@ -188,18 +188,17 @@ bool geofence::inside_polygon(std::vector<point> _fence, point test_point)
 
 bool geofence::geodetic_to_UTM(point &p)
 {
-  ROS_INFO("UTM_zone: %i", UTM_zone);
+  if(DEBUG) ROS_INFO("UTM_zone: %i", UTM_zone);
   double lon0 = (((double)UTM_zone -1)*6-180+3);
-  ROS_INFO("lon0: %f",lon0);
+  if(DEBUG) ROS_INFO("lon0: %f",lon0);
   try
   {
     GeographicLib::TransverseMercator proj(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f(), GeographicLib::Constants::UTM_k0());
     point local_point;
+    if(DEBUG) ROS_INFO("geodetic: %f,%f", p.lat, p.lon);
     proj.Forward(lon0,p.lat,p.lon,local_point.lat,local_point.lon);
-    ROS_INFO("geodetic_to_UTM: %f,%f",local_point.lat,local_point.lon);
-    point reverse;
-    proj.Reverse(lon0,local_point.lat,local_point.lon, reverse.lat, reverse.lon);
-    ROS_INFO("reverse: %f,%f",reverse.lat,reverse.lon);
+    local_point.lat += false_easting;
+    if(DEBUG) ROS_INFO("geodetic_to_UTM: %f,%f",local_point.lat,local_point.lon);
 
     p = local_point;
   }
@@ -210,4 +209,108 @@ bool geofence::geodetic_to_UTM(point &p)
     return false;
   }
   return true;
+}
+
+bool geofence::self_test()
+{
+  if(DEBUG) ROS_INFO("Starting selftest");
+  if(DEBUG) ROS_INFO("Testing UTM");
+  bool ret_val = test_UTM();
+
+  std::vector<point> fence_backup;
+  std::vector<obstacle> obstacles_backup;
+  std::vector<point> points;
+  std::vector<point> local_fence;
+  std::vector<obstacle> local_obstacles;
+  // Backup existing data
+  if(fence.size() > 0)
+  {
+    fence_backup = fence;
+  }
+  fence.clear();
+  if(obstacles.size() > 0)
+  {
+    obstacles_backup = obstacles;
+  }
+  obstacles.clear();
+
+  // Set geofence
+  point p1, p2, p3, p4, p_inside, p_outside;
+
+  p1.lat = 55.0;
+  p1.lon = 10.0;
+  local_fence.push_back(p1);
+  p2.lat = 55.1;
+  p2.lon = 10.0;
+  local_fence.push_back(p2);
+  p3.lat = 55.1;
+  p3.lon = 10.1;
+  local_fence.push_back(p3);
+  p4.lat = 55.0;
+  p4.lon = 10.1;
+  local_fence.push_back(p4);
+  set_fence(local_fence);
+  // Define testpoints
+  p_inside.lat = 55.05;
+  p_inside.lon = 10.05;
+  p_outside.lat = 55.2;
+  p_outside.lon = 10.2;
+
+  // Perform inclusion tests
+  if(DEBUG) ROS_INFO("Testing point inside");
+  bool inside_test = point_legal(p_inside);
+  if(!inside_test)
+    ROS_ERROR("Inside test failed");
+  if(DEBUG) ROS_INFO("Testing point outside");
+  bool outside_test = !point_legal(p_outside); // NOTE: Negation becase the point should be outside
+  if(!outside_test)
+    ROS_ERROR("Outside test failed");
+
+  // Restore existing data
+  if(fence.size() > 0)
+  {
+    fence_backup = fence;
+  }
+  if(obstacles.size() > 0)
+  {
+    obstacles_backup = obstacles;
+  }
+
+  ret_val = ret_val && inside_test && outside_test;
+  if(ret_val == true)
+  {
+    if(DEBUG) ROS_INFO("All tests passed");
+  }
+  return ret_val;
+}
+
+bool geofence::test_UTM()
+{
+  int ret_val = 0;
+  point p, p_UTM_expected;
+  // These coordinates are based on online converters and Kjeld Jensen's utm_test.py
+  p.lat = 55.0000000000;
+  p.lon = 009.0000000000;
+  p_UTM_expected.lat = 500000;
+  p_UTM_expected.lon = 6094791.420999;
+
+  if( geodetic_to_UTM(p) )
+  {
+    if( p_UTM_expected.lat - TEST_ACCURACY < p.lat && p.lat < p_UTM_expected.lat + TEST_ACCURACY)
+    {
+      if(DEBUG) ROS_INFO("geodetic test: lat OK");
+    }
+    else
+      ret_val++;
+    if( p_UTM_expected.lon - TEST_ACCURACY < p.lon && p.lon < p_UTM_expected.lon + TEST_ACCURACY)
+    {
+      if(DEBUG) ROS_INFO("geodetic test: lon OK");
+    }
+    else
+      ret_val++;
+  }
+  if(ret_val > 0)
+    ROS_ERROR("geodetic test: ERROR. Expected %f,%f but got %f,%f",p_UTM_expected.lat, p_UTM_expected.lon, p.lat, p.lon);
+
+  return (ret_val == 0);
 }
