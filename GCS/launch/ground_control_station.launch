@@ -5,5 +5,6 @@
    <node name = "docking_station" pkg = "gcs" type = "docking_station_node" respawn = "true"/>
    <node name = "drone_comm" pkg = "gcs" type = "drone_communication_node" respawn = "true"/>
    <node name = "path_planner" pkg = "gcs" type = "path_planner_node" respawn = "true"/>
+   <node name = "pre_flight" pkg = "gcs" type = "pre_flight_node.py" respawn = "true"/>
 
 </launch>
