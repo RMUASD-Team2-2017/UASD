@@ -1,0 +1,11 @@
+<launch>
+
+	<!-- Launch all nodes on the On-board Embedded System /-->
+   <node name = "oes_control" pkg = "oes" type = "oes_control_node" respawn = "true"/>
+   <node name = "fc_comm" pkg = "oes" type = "fc_communication_node" respawn = "true"/>
+   <node name = "gcs_comm" pkg = "oes" type = "gcs_communication_node" respawn = "true"/>
+   <node name = "geofence" pkg = "oes" type = "geofence_control_node" respawn = "true"/>
+   <node name = "oes_gps" pkg = "oes" type = "gps_control_node" respawn = "true"/>
+   <node name = "oes_led" pkg = "oes" type = "led_control_node" respawn = "true"/>
+
+</launch>
