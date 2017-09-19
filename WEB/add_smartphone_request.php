@@ -1,10 +1,7 @@
 <?php
     if (!empty($_POST['lat']) && !empty($_POST['lat'])) { //check if post using isset
-        //--------------------------------------------------------------------------
-        // Example php script for fetching data from mysql database
-        //--------------------------------------------------------------------------
+        // Require DB config
         require('config.php');
-        $tableName = "AED_smartphone_requests";
 
         //--------------------------------------------------------------------------
         // 1) Connect to mysql database
@@ -33,21 +30,53 @@
         $request_id_md5 = md5($request_id.$ip.$browser);
         //echo $request_id_md5;
 
-        $sql = "INSERT INTO `AED_smartphone_requests` (`int_id`, `id`, `loc_lat`, `loc_lon`, `req_time`, `timestamp`, `loc_accuracy`, `altitude`, `altitude_accuracy`) VALUES (NULL, '$request_id_md5', '$lat', '$lng', '$time', '$GPS_timestamp', '$loc_accuracy', '$altitude', '$altitude_accuracy');";
-        $result = mysqli_query($con, $sql);          //query
-
-        //echo $_POST['lat'];
-
-        // Get ETA for drone
-        $sql = "SELECT * FROM `AED_drone_list` WHERE `target_id` = '$request_id_md5'";
+        // Set default
+        $return_time = "estimating";
+        $drone_state = "dispatching";
+        // Check if it is completely new information / a new request
+        $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
         $result = mysqli_query($con, $sql);          //query
         $array = mysqli_fetch_row($result);                          //fetch result
-        //echo ",".$array[12]; //field 13 (count from 1) in AED_drone_list is the ETA
-        if (!empty($array)) {
-            echo date('Y-m-d G:i:s', strtotime($array[12]));
+        if (empty($array)) {
+            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '0', '');";
+            $result = mysqli_query($con, $sql);          //query
         } else {
-            echo "estimating ...";
+            // See if a drone has been dispatched
+            if (!empty($array[1])) {
+                // Drone has been dispatched
+                $return_time = date('Y-m-d G:i:s', strtotime($array[4]));
+                // Get drone state
+                $sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$array[1]'";
+                $result = mysqli_query($con, $sql);          //query
+                $array = mysqli_fetch_row($result);          //fetch result
+                //$drone_state = $array[6]; // Drone state
+                $drone_state = "dispatched";
+            }
         }
+
+        // Make a new entry for the new information
+        $sql = "INSERT INTO `AED_smartphone_requests` (`int_id`, `id`, `loc_lat`, `loc_lng`, `req_time`, `timestamp`, `loc_accuracy`, `altitude`, `altitude_accuracy`) VALUES (NULL, '$request_id_md5', '$lat', '$lng', '$time', '$GPS_timestamp', '$loc_accuracy', '$altitude', '$altitude_accuracy');";
+        $result = mysqli_query($con, $sql);          //query
+
+        // See if a drone has been dispatched
+        // $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
+        // $result = mysqli_query($con, $sql);          //query
+        // $array = mysqli_fetch_row($result);                          //fetch result
+
+
+        // //echo ",".$array[12]; //field 13 (count from 1) in AED_drone_list is the ETA
+        // if (!empty($array)) {
+        //     $return_time = date('Y-m-d G:i:s', strtotime($array[12]));
+        //     $drone_state = $array[6];
+        // } else {
+        //     $return_time = "estimating";
+        //     $drone_state = "dispatching";
+        // }
+        $array_out = array(
+            "ETA" => $return_time,
+            "AED_status" => $drone_state,
+        );
+        echo json_encode($array_out);
 
 
         //--------------------------------------------------------------------------
