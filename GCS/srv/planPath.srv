@@ -1,0 +1,4 @@
+gcs/waypoint origin
+gcs/waypoint goal
+---
+int8 result
