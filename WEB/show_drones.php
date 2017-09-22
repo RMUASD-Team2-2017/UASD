@@ -53,7 +53,7 @@
                 echo "<td>None</td>";
             } else {
                 echo "<td>" . $row['cur_lat'] . ", " . $row['cur_lng'] . "</td>";
-                if ($row['state'] != 'maintenance' || $row['state'] == 'error') {
+                if ($row['state'] == 'maintenance' || $row['state'] == 'error') {
                     echo "<td>None</td>";
                 } else {
                     echo "<td>" . $row['target_lat'] . ", " . $row['target_lng'] . "</td>";
