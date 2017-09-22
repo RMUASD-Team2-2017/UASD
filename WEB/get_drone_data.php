@@ -25,7 +25,8 @@
         //vardump($result)
     } else {
         // Return the drone identified by the post request 'drone_id'
-        $sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '1'";
+        $drone_id = $_POST['drone_id'];
+        $sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$drone_id' LIMIT 1";
         $result = mysqli_query($con, $sql);          //query
 
         $array = mysqli_fetch_row($result);                          //fetch result
