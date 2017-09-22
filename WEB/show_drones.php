@@ -26,6 +26,7 @@
     <th>State</th>
     <th>Current position</th>
     <th>Target position</th>
+    <th>Weather*</th>
     <th>Comment</th>
     </tr>
     </thead>
@@ -59,12 +60,14 @@
                     echo "<td>" . $row['target_lat'] . ", " . $row['target_lng'] . "</td>";
                 }
             }
+            echo "<td>" . $row['weather'] . "</td>";
             echo "<td>" . $row['comment'] . "</td>";
         echo "</tr>";
     }
     echo "</tbody>
     </table>";
 
+    echo "<i>* updated during pre-flight check</i>";
     echo '</div>
     </body>
     </html>';
