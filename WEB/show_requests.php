@@ -23,7 +23,9 @@
     <th>Request #</th>
     <th>Request ID</th>
     <th>Assigned UAV ID</th>
+    <th>Time and date</th>
     <th>ETA</th>
+    <th>Link</th>
     </tr>
     </thead>
     <tbody>';
@@ -36,19 +38,20 @@
         } else {
             echo '<tr style="background-color: #90EE90;">';
         }
-            echo "<td>" . $row['int_id'] . "</td>";
-            echo "<td>" . $row['request_id'] . "</td>";
-            if ($row['drone_id'] == 0) {
-                echo "<td>None</td>";
-            } else {
-                echo "<td>" . $row['drone_id'] . "</td>";
-            }
-            if ($row['eta'] == 0) {
-                echo "<td>None</td>";
-            } else {
-                echo "<td>" . date('Y-m-d G:i:s', strtotime($row['eta'])) . "</td>";
-            }
-
+        echo "<td>" . $row['int_id'] . "</td>";
+        echo "<td>" . $row['request_id'] . "</td>";
+        if ($row['drone_id'] == 0) {
+            echo "<td>None</td>";
+        } else {
+            echo "<td>" . $row['drone_id'] . "</td>";
+        }
+        echo "<td>" . date('Y-m-d G:i:s', strtotime($row['time'])) . "</td>";
+        if ($row['eta'] == 0) {
+            echo "<td>None</td>";
+        } else {
+            echo "<td>" . date('Y-m-d G:i:s', strtotime($row['eta'])) . "</td>";
+        }
+        echo '<td><a href="https://www.techgen.dk/AED/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";
     }
     echo "</tbody>
