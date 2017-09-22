@@ -11,20 +11,28 @@
     $lat = $_POST['lat'];
     $lng = $_POST['lng'];
 
-    $sql = "UPDATE `AED_drone_list` SET `cur_lat` = '$lat', `cur_lng` = '$lng' WHERE  `id` = '$drone_id'";
-    $result = mysqli_query($con, $sql);          //query
+    if ($lat != '' && $lng != '') {
+        $sql = "UPDATE `AED_drone_list` SET `cur_lat` = '$lat', `cur_lng` = '$lng' WHERE  `id` = '$drone_id'";
+        $result = mysqli_query($con, $sql);          //query
 
-    if(mysqli_affected_rows($con) == 1) {
-        //die('Could not update data: ' . mysql_error());
-        $array_out = array(
-            "status" => 1,
-        );
+        if(mysqli_affected_rows($con) == 1) {
+            //die('Could not update data: ' . mysql_error());
+            $array_out = array(
+                "status" => 1,
+            );
+        } else {
+            $array_out = array(
+                "status" => 0,
+            );
+        }
+        echo json_encode($array_out);
     } else {
         $array_out = array(
             "status" => 0,
         );
+        echo json_encode($array_out);
     }
-    echo json_encode($array_out);
 
-   mysqli_close($con);
+
+    mysqli_close($con);
 ?>
