@@ -1,6 +1,7 @@
 table.customTableClass {
   background-color: #FCFCFC;
   border-collapse: collapse;
+  width: 100%;
 }
 table.customTableClass td, table.customTableClass th {
   border: 1px solid #AAAAAA;
