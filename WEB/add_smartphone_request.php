@@ -38,7 +38,7 @@
         $result = mysqli_query($con, $sql);          //query
         $array = mysqli_fetch_row($result);                          //fetch result
         if (empty($array)) {
-            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '0', '');";
+            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '');";
             $result = mysqli_query($con, $sql);          //query
         } else {
             // See if a drone has been dispatched
