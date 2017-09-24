@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  mavros_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -64,6 +65,14 @@ add_message_files(
 add_service_files(
   FILES
   planPath.srv
+  uploadMission.srv
+  clearMission.srv
+  arm.srv
+  disarm.srv
+  takeoff.srv
+  land.srv
+  startMission.srv
+  stopMission.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -77,6 +86,7 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  sensor_msgs
 )
 
 ################################################
@@ -147,8 +157,8 @@ add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp)
 ## same as for the library above
 add_dependencies(gcs_control_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(docking_station_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(drone_communication_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(path_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} gcs_generate_messages_cpp)
+add_dependencies(drone_communication_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} std_msgs mavros_msgs sensor_msgs gcs_generate_messages_cpp)
+add_dependencies(path_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} std_msgs mavros_msgs gcs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(gcs_control_node ${catkin_LIBRARIES})
