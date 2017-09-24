@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <stdlib.h>
 
 // Custom
 #include "geofence.h"
@@ -106,21 +107,84 @@ int main(int argc, char** argv)
 	ros::NodeHandle n;
   PATH_PLANNER_CLASS planner(n);
 
-std::ifstream geofence_file ("/home/mathias/Desktop/geofence_test.csv");
-//ifstream file ( "file.csv" ); // declare file stream: http://www.cplusplus.com/reference/iostream/ifstream/
-std::string field_value, lat, lon;
-std::getline  (geofence_file,field_value,'\n'); // Skip first line
-int pointCount = 1;
-while ( geofence_file.good() && std::getline ( geofence_file, field_value, ',' ) ) 
-{
-	// Skip first field in if statement (to ensure it does not repeat last line)
-	std::getline ( geofence_file, field_value, ',' );	// Skip second field
-	std::getline ( geofence_file, lat, ',' ); 			// Read Lat
-	std::getline ( geofence_file, lon, ',' ); 			// Read lon
-	std::getline ( geofence_file, field_value, '\n' ); // Skip the rest of the line
-	//std::cout << std::string( field_value, 1, field_value.length()-2 ) << ";"; // display value removing the first and the last character from it
-	std::cout << pointCount++ << ": "  << lat << " " << lon << std::endl;
-}
+// std::ifstream geofence_file ("/home/mathias/Desktop/geofence_test.csv");
+// std::cout << geofence_file.good() << geofence_file.eof() << geofence_file.fail() << geofence_file.bad() << std::endl;
+ 
+// //ifstream file ( "file.csv" ); // declare file stream: http://www.cplusplus.com/reference/iostream/ifstream/
+//  std::string fieldValue, lat, lon;
+// std::getline  (geofence_file,fieldValue,'\n'); // Skip first line
+// int pointCount = 1;
+// std::vector<point> fence_points;
+// while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) ) 
+// {
+// 	point temp_point;
+// 	// Skip first field in if statement (to ensure it does not repeat last line)
+// 	std::getline ( geofence_file, fieldValue, ',' );	// Skip second field
+// 	std::getline ( geofence_file, lat, ',' ); 			// Read Lat
+// 	std::getline ( geofence_file, lon, ',' ); 			// Read lon
+// 	std::getline ( geofence_file, fieldValue, '\n' ); // Skip the rest of the line
+// 	//std::cout << std::string( field_value, 1, field_value.length()-2 ) << ";"; // display value removing the first and the last character from it
+// 	std::cout << pointCount++ << ": "  << lat << " " << lon << std::endl;
+// 	temp_point.lat = std::atof(lat.c_str());
+// 	temp_point.lon = std::atof(lon.c_str());
+// 	fence_points.push_back(temp_point);
+// }
+//  geofence_file.close(); 
+
+// std::cout << "Fence points from vector" << std::endl;
+// for( int i = 0; i < fence_points.size(); i++)
+// {
+// 	std::cout << (i+1) << ": " << fence_points[i].lat << " " << fence_points[i].lon << std::endl;
+// }
+
+// std::ifstream obstacle_file ("/home/mathias/Desktop/obstacle_test.csv");
+// std::string height, pointsInObstacleStr;
+// if(obstacle_file.good())
+// 	std::cout << "good" << std::endl;
+// else
+// 	std::cout << "bad" << std::endl;
+// std::cout << obstacle_file.good() << obstacle_file.eof() << obstacle_file.fail() << obstacle_file.bad() << std::endl;
+
+// std::vector<obstacle> obstacles;
+// while( obstacle_file.good() && std::getline( obstacle_file, height, ',' ) )
+// {
+// 	std::getline( obstacle_file, pointsInObstacleStr, '\n' );
+// 	int pointsInObstacle = std::atoi(pointsInObstacleStr.c_str());
+// 	std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;	
+// 	obstacle temp_obstacle;
+// 	temp_obstacle.height = std::atof(height.c_str());
+// 	for( int i = 0; i < pointsInObstacle; i++) // For all points in this obstacle
+// 	{
+// 		point temp_point;
+// 		std::getline ( obstacle_file, fieldValue, ',' );	// Skip first field (until delimiter ,)
+// 		std::getline ( obstacle_file, fieldValue, ',' );	// Skip second field (until delimiter ,)
+// 		std::getline ( obstacle_file, lat, ',' ); 			// Read Lat (until delimiter ,)
+// 		std::getline ( obstacle_file, lon, ',' ); 			// Read lon(until delimiter ,)
+// 		std::getline ( obstacle_file, fieldValue, '\n' ); // Skip the rest of the line	(until delimiter \n)
+// 		temp_point.lat = std::atof(lat.c_str());
+// 		temp_point.lon = std::atof(lon.c_str());
+// 		temp_obstacle.points.push_back(temp_point);
+// 	}
+// 	obstacles.push_back(temp_obstacle);
+// }
+
+// std::cout << "Obstacles from vector:" << std::endl;
+// for( int i = 0; i < obstacles.size(); i++)
+// {
+// 	std::cout << "Obstacle" << i << ":" << std::endl;
+// 	std::cout << "\tHeight: " << obstacles[i].height << std::endl;
+// 	for( int j = 0; j < obstacles[i].points.size(); j++)
+// 	{
+// 		std::cout  << '\t' << obstacles[i].points[j].lat << " " << obstacles[i].points[j].lon << std::endl;
+// 	}
+// }
+
+// std::cout << "Finished" << std::endl;
+
+geofence fence_test;
+fence_test.set_fence("/home/mathias/Desktop/geofence_test.csv");
+fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
+
 
 // // GEOFENCE TESTING!
 // 	geofence fence;
