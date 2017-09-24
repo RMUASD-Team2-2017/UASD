@@ -45,11 +45,11 @@
         } else {
             echo "<td>" . $row['drone_id'] . "</td>";
         }
-        echo "<td>" . date('Y-m-d G:i:s', strtotime($row['time'])) . "</td>";
+        echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
         if ($row['eta'] == 0) {
             echo "<td>None</td>";
         } else {
-            echo "<td>" . date('Y-m-d G:i:s', strtotime($row['eta'])) . "</td>";
+            echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
         }
         echo '<td><a href="https://www.techgen.dk/AED/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";

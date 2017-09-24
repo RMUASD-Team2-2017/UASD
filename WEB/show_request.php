@@ -19,7 +19,7 @@
         <body>
         <div class="centerDiv">
         <center><h1>AED Request</h1><br /><h2>Request id: '.$request_id.'</h2></center>';
-        
+
         if (mysqli_num_rows($result) != 0) {
             echo '<table class="customTableClass">
             <thead>
@@ -41,7 +41,7 @@
                 echo "<td>" . $local_itr . "</td>";
                 echo "<td>" . $row['loc_lat'] . ", " . $row['loc_lng'] . "</td>";
                 echo "<td>" . $row['loc_accuracy'] . "</td>";
-                echo "<td>" . date('Y-m-d G:i:s', strtotime($row['req_time'])) . "</td>";
+                echo "<td>" . date('Y-m-d H:i:s', strtotime($row['req_time'])) . "</td>";
                 echo "<td>" . $row['timestamp'] . "</td>";
                 echo "<td>" . $row['altitude'] . "</td>";
                 echo "<td>" . $row['altitude_accuracy'] . "</td>";

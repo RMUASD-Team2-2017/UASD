@@ -26,7 +26,8 @@
             <br>
           <!-- <button onclick="getLocation()">Request AED - Static</button>
           <br> -->
-          <button onclick="getLocationDynamic()">Request AED</button>
+          <!-- <button onclick="getLocationDynamic()">Request AED</button> -->
+          <button onclick="getLocationStart()">Request AED</button>
         </div>
         </center>
         <br>
@@ -50,6 +51,9 @@
         <!-- From here it is purely JavaScript  -->
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
         <script>
+        options = {
+            enableHighAccuracy: true
+        };
         var InfoHolder = document.getElementById("Info");
         var LatHolder = document.getElementById("Lat");
         var LonHolder = document.getElementById("Lon");
@@ -63,20 +67,27 @@
 
         var firstRun = 1;
         var firstGPStimestamp;
+        var lastGPStimestamp;
+
+        function getLocationStart() {
+            setInterval(getLocation, 10000);
+            getLocation();
+        }
 
         function getLocation() {
         	buttonsDiv.style.display = 'none';
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(showPosition, showError);
+                navigator.geolocation.getCurrentPosition(showPosition, showError, options);
             } else {
                 InfoHolder.innerHTML = "Geolocation is not supported by this browser.";
             }
         }
 
+
         function getLocationDynamic() {
         	buttonsDiv.style.display = 'none';
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(showPosition, showError);
+                navigator.geolocation.watchPosition(showPosition, showError, options);
             } else {
                 InfoHolder.innerHTML = "Geolocation is not supported by this browser.";}
             }
@@ -93,41 +104,44 @@
             // + "Speed: " + position.coords.speed;
             // Note that the more which is being returned the slower it becomes.
 
-            if (firstRun) {
-                firstGPStimestamp = position.timestamp;
-                firstRun=0;
-            }
-
-            // Static map without marker
-            // var latlon = position.coords.latitude + "," + position.coords.longitude;
-            // var img_url = "https://maps.googleapis.com/maps/api/staticmap?center="
-            // +latlon+"&zoom=14&size=400x300&key=AIzaSyDTHa8VL03UUNRQdlxNm99TaUzTsK2v6Ls";
-            // document.getElementById("mapholder").innerHTML = "<img src='"+img_url+"'>";
-
-            LatLng = {lat: position.coords.latitude, lng: position.coords.longitude};
-            myMap(LatLng);
-
-            $.ajax({
-                url: "add_smartphone_request.php",
-                type: "POST",
-                dataType: 'json', // or 'text'
-                //contentType: 'application/x-www-form-urlencoded',
-                data: { lat: position.coords.latitude,  lng: position.coords.longitude, GPS_timestamp: position.timestamp, loc_accuracy: position.coords.accuracy, altitude: position.coords.altitude, altitude_accuracy: position.coords.altitudeAccuracy, first_GPS_timestamp: firstGPStimestamp},
-                success: function(msg) {
-                    //alert(msg);
-                    //var id = msg[0];
-                    console.log("Response received!");
-                    //ETAHolder.innerHTML = "ETA: " + JSON.stringify(msg).ETA;
-                    var rxArray = JSON.parse(JSON.stringify(msg));
-                    //console.log("Messsage: "+msg);
-                    //console.log("ID: "+id);
-                    StatusHolder.innerHTML = "Status: " + rxArray.AED_status;
-                    ETAHolder.innerHTML = "ETA: " + rxArray.ETA;
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                   console.log(textStatus, errorThrown);
+            if (lastGPStimestamp != position.timestamp) {
+                if (firstRun) {
+                    firstGPStimestamp = position.timestamp;
+                    firstRun=0;
                 }
-            });
+
+                // Static map without marker
+                // var latlon = position.coords.latitude + "," + position.coords.longitude;
+                // var img_url = "https://maps.googleapis.com/maps/api/staticmap?center="
+                // +latlon+"&zoom=14&size=400x300&key=AIzaSyDTHa8VL03UUNRQdlxNm99TaUzTsK2v6Ls";
+                // document.getElementById("mapholder").innerHTML = "<img src='"+img_url+"'>";
+
+                LatLng = {lat: position.coords.latitude, lng: position.coords.longitude};
+                myMap(LatLng);
+
+                $.ajax({
+                    url: "add_smartphone_request.php",
+                    type: "POST",
+                    dataType: 'json', // or 'text'
+                    //contentType: 'application/x-www-form-urlencoded',
+                    data: { lat: position.coords.latitude,  lng: position.coords.longitude, GPS_timestamp: position.timestamp, loc_accuracy: position.coords.accuracy, altitude: position.coords.altitude, altitude_accuracy: position.coords.altitudeAccuracy, first_GPS_timestamp: firstGPStimestamp},
+                    success: function(msg) {
+                        //alert(msg);
+                        //var id = msg[0];
+                        console.log("Response received!");
+                        //ETAHolder.innerHTML = "ETA: " + JSON.stringify(msg).ETA;
+                        var rxArray = JSON.parse(JSON.stringify(msg));
+                        //console.log("Messsage: "+msg);
+                        //console.log("ID: "+id);
+                        StatusHolder.innerHTML = "Status: " + rxArray.AED_status;
+                        ETAHolder.innerHTML = "ETA: " + rxArray.ETA;
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                       console.log(textStatus, errorThrown);
+                    }
+                });
+                lastGPStimestamp = position.timestamp;
+            }
         }
         //To use this code on your website, get a free API key from Google.
         //Read more at: https://www.w3schools.com/graphics/google_maps_basic.asp
