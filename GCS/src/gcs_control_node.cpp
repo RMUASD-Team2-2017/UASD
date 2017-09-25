@@ -214,6 +214,7 @@ int main(int argc, char** argv)
 	{
 		gcs.run();
 		ros::spinOnce();
+		rate.sleep();
 	}
 	return 0;
 }
