@@ -9,8 +9,32 @@
 
 #define GCS_CONTROL_CLASS gcs_control
 
+enum gcsState {
+	idle,
+	received_distress_call,
+	prepare,
+	wait_for_ready,
+	deploy,
+	flying,
+	arrived
+};
+
 class GCS_CONTROL_CLASS
 {
+	public:
+		GCS_CONTROL_CLASS(ros::NodeHandle);
+		~GCS_CONTROL_CLASS();
+		void run();
+	private:
+		/* ROS */
+		ros::NodeHandle nh;
+
+		/* Methods */ 
+
+
+		/* Attributes */
+		gcsState state = idle;
+
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
 	// TODO
@@ -46,10 +70,65 @@ class GCS_CONTROL_CLASS
 
 };
 
+GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
+{
+	nh = n;
+}
+
+	// idle,
+	// received_distress_call,
+	// wait_for_ready,
+	// deploy,
+	// flying,
+	// arrived
+
+void GCS_CONTROL_CLASS::run()
+{
+	switch (state)
+	{
+		case idle:
+			// Continuosly monitor drone and docking station
+			break;
+		case received_distress_call:
+			// Start preflight check
+			// Start path planning
+		case prepare:
+			// upload path (mission) when ready
+			// if weather ok, open docking station
+			break;
+		case wait_for_ready:
+			// wait for opening of docking station
+			break;
+		case deploy:
+			//If everything ok -> arm the drone
+			break;
+		case flying:
+			// Monitor during flight
+			break;
+		case arrived:
+			// ?
+			break;
+		default:
+			ROS_ERROR("Bad state");
+			/* Default Code */
+	}
+	
+}
+
+
+GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
+{}
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, VALUE_AS_STRING(GCS_CONTROL_CLASS));
-  GCS_CONTROL_CLASS gcs;
-  ros::spin();
-  return 0;
+	ros::NodeHandle nh;
+	GCS_CONTROL_CLASS gcs(nh);
+	ros::Rate rate(20);
+	while(ros::ok())
+	{
+		gcs.run();
+		ros::spinOnce();
+	}
+	return 0;
 }
