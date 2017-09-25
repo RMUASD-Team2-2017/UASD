@@ -11,6 +11,10 @@
 #include "gcs/arm.h"
 #include "gcs/deploy_request.h"
 
+#include "sensor_msgs/NavSatFix.h"
+
+#include "mavros_msgs/WaypointList.h"
+
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -57,6 +61,11 @@ class GCS_CONTROL_CLASS
 		void pathSubscriberCallback(const gcs::path::ConstPtr& msg);
 		ros::Subscriber deploy_subscriber;
 		void deploySubscriberCallback(const gcs::deploy_request::ConstPtr& msg);
+		ros::Subscriber drone_gps_subscriber;
+		void droneGpsSubscriberCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
+		ros::Subscriber mission_state_subscriber;
+		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
+		
 		
 		
 
@@ -68,6 +77,10 @@ class GCS_CONTROL_CLASS
 		missionUploadState mission_upload_state = MISSION_IDLE;
 		gcs::path planned_path;
 		gcs::deploy_request deploy_request;
+		sensor_msgs::NavSatFix current_drone_position;
+		int current_waypoint = 0;
+		int last_waypoint = 0;
+		int number_of_waypoints = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -114,6 +127,8 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	
 	path_subscriber = nh.subscribe<gcs::path>("/path_planner/path",1,&GCS_CONTROL_CLASS::pathSubscriberCallback,this);
 	deploy_subscriber = nh.subscribe<gcs::deploy_request>("/web_interface/deploy_request",1,&GCS_CONTROL_CLASS::deploySubscriberCallback,this);
+	drone_gps_subscriber = nh.subscribe<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1,&GCS_CONTROL_CLASS::droneGpsSubscriberCallback,this);
+	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 }
 
 void GCS_CONTROL_CLASS::run()
@@ -123,7 +138,7 @@ void GCS_CONTROL_CLASS::run()
 		case IDLE:
 			{
 				// Continuosly monitor drone and docking station
-				ROS_INFO("IDLE");
+				//ROS_INFO("IDLE");
 			}
 			break;
 		case RECEIVED_DISTRESS_CALL:
@@ -134,11 +149,11 @@ void GCS_CONTROL_CLASS::run()
 				
 				// Start path planning
 				gcs::planPath path_request;
-				path_request.request.origin.lat = 47.3977417;
-				path_request.request.origin.lon = 8.5455937;
-				path_request.request.origin.alt = 495.0;
-				path_request.request.goal.lat = 47.39770;
-				path_request.request.goal.lon = 8.5455937;
+				path_request.request.origin.lat = current_drone_position.latitude;
+				path_request.request.origin.lon = current_drone_position.longitude;
+				path_request.request.origin.alt = current_drone_position.altitude;	// This doesn't matter. We use relative altitude frame in mavlink
+				path_request.request.goal.lat = deploy_request.point.lat;
+				path_request.request.goal.lon = deploy_request.point.lon;
 				path_request.request.goal.alt = 0;
 				if ( !plan_path_service_client.call(path_request) )
 					ROS_ERROR("Plan path failed");
@@ -168,12 +183,12 @@ void GCS_CONTROL_CLASS::run()
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
 				{
 					state = WAIT_FOR_READY;
+					ROS_INFO("WAIT_FOR_READY");
 				}
 			}
 			break;
 		case WAIT_FOR_READY:
 			{
-				ROS_INFO("WAIT_FOR_READY");
 				
 				// wait for opening of docking station
 				state = DEPLOY;
@@ -187,6 +202,8 @@ void GCS_CONTROL_CLASS::run()
 				if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
 				{
 					state = FLYING;
+					ROS_INFO("FLYING");
+					
 				}
 				else
 					ROS_ERROR("Failed to arm");
@@ -194,13 +211,16 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case FLYING:
 			{
-				ROS_INFO("FLYING");				
+				if( last_waypoint == (number_of_waypoints-1) && current_waypoint == 0 )
+				{
+					state = ARRIVED;	
+					ROS_INFO("ARRIVED");
+				}
 				// Monitor during flight
 			}
 			break;
 		case ARRIVED:
-			{
-				ROS_INFO("ARRIVED");				
+			{				
 				// ?
 			}
 			break;
@@ -222,6 +242,28 @@ void GCS_CONTROL_CLASS::deploySubscriberCallback(const gcs::deploy_request::Cons
 	deploy_request = *msg;
 	state = RECEIVED_DISTRESS_CALL;
 }
+
+void GCS_CONTROL_CLASS::droneGpsSubscriberCallback(const sensor_msgs::NavSatFix::ConstPtr& msg)
+{
+	current_drone_position = *msg;
+}
+
+void GCS_CONTROL_CLASS::missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg)
+{
+	number_of_waypoints = msg->waypoints.size();
+	last_waypoint = current_waypoint;
+	for(int i = 0; i < msg->waypoints.size(); i++)
+	{
+		if( msg->waypoints[i].is_current == true)
+		{
+			current_waypoint = i;
+			ROS_INFO("Reached waypoint %i", current_waypoint);
+			break;
+		}
+	}
+}
+
+
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
 {}

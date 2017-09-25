@@ -14,6 +14,7 @@
 #include "mavros_msgs/CommandLong.h"
 #include "mavros_msgs/ParamSet.h"
 #include "mavros_msgs/SetMode.h"
+#include "mavros_msgs/WaypointList.h"
 
 
 
@@ -110,12 +111,17 @@ private:
 
 	// Published topics
 	ros::Publisher communicationStatusPublisher;
+	ros::Publisher dronePositionPublisher;
+	ros::Publisher statePublisher;
+	ros::Publisher missionStatusPublisher;
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
   	void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
+	ros::Subscriber missionStatusSubscriber;
+	void missionStatusSubscriberCallback(const mavros_msgs::WaypointList &msg);
 };
 
 DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
@@ -144,9 +150,13 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 
 	// Publishers
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
+	dronePositionPublisher = nh.advertise<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1);
+	statePublisher = nh.advertise<mavros_msgs::State>("/drone_communication/droneState",1);
+	missionStatusPublisher = nh.advertise<mavros_msgs::WaypointList>("/drone_communication/missionState",1);
 	// Subscribers
 	stateSubscriber = nh.subscribe("/mavros1/state",1,&DRONE_COMM_CLASS::stateCallback,this);
 	globalPositionSubscriber = nh.subscribe("/mavros1/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
+	missionStatusSubscriber = nh.subscribe("/mavros1/mission/waypoints",1,&DRONE_COMM_CLASS::missionStatusSubscriberCallback, this);
 
 	heartbeatTimestamp = ros::Time::now().toSec();
 }
@@ -158,14 +168,22 @@ void DRONE_COMM_CLASS::stateCallback(const mavros_msgs::State &msg)
 {
 	heartbeatTimestamp = ros::Time::now().toSec();
 	curDroneStatus.state = msg;
+	statePublisher.publish(msg);
 	if(DEBUG) ROS_INFO("Heartbeat");
 }
 
 void DRONE_COMM_CLASS::globalPositionCallback(const sensor_msgs::NavSatFix &msg)
 {
 	curDroneStatus.gpsPosition = msg;
+	dronePositionPublisher.publish(msg);
 	//if(DEBUG) ROS_INFO("Global position");
 }
+
+void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::WaypointList &msg)
+{
+	missionStatusPublisher.publish(msg);
+}
+
 
 void DRONE_COMM_CLASS::checkHeartbeat()
 {
@@ -185,30 +203,43 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	if(DEBUG) ROS_INFO("Uploading mission");
 	res.result = SUCCESS;
 	mavros_msgs::WaypointClear clearMsg;
-	if(!clearMissionServiceClient.call(clearMsg))
+	while(true)
 	{
-		ROS_ERROR("Error in clearing mission");
-		res.result = ERROR_CLEARING_MISSION;
-		return false;
+		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
+		{
+			ROS_ERROR("Error in clearing mission");
+			res.result = ERROR_CLEARING_MISSION;
+			return false;
+		}
+		else
+			break;
 	}
 	mavros_msgs::ParamSet paramMsg;
 	paramMsg.request.param_id = "NAV_DLL_ACT";
-	if(!setParameterServiceClient.call(paramMsg))
+	while(true)
 	{
-		ROS_ERROR("Error in setting NAV_DLL_ACT");
-		res.result = ERROR_PARAM_SET;
-		return false;
+		if(!setParameterServiceClient.call(paramMsg) && !paramMsg.response.success)
+		{
+			ROS_ERROR("Error in setting NAV_DLL_ACT");
+			res.result = ERROR_PARAM_SET;
+			return false;
+		}
+		else
+			break;
 	}
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.MISSION";
-	if(!setModeServiceClient.call(setModeMsg))
+	while(true)
 	{
-		ROS_ERROR("Error in setting mode AUTO.MISSION");
-		res.result = ERROR_SET_MODE;
-		return false;
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			res.result = ERROR_SET_MODE;
+			return false;
+		}
+		else
+			break;
 	}
-
-
 
 	int numberOfWaypoints = req.waypoints.path.size();
 	if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
@@ -305,7 +336,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	// wp3.z_alt = 5.0;
 	// missionMsg.request.waypoints.push_back(wp3);
 
-	if (uploadMissionServiceClient.call(missionMsg))
+	if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 	{
     	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
 	}
