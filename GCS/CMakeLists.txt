@@ -65,6 +65,7 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
+  preFlight.srv
   planPath.srv
   uploadMission.srv
   clearMission.srv
@@ -120,6 +121,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  CATKIN_DEPENDS
+  message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES ground_control_station
 #  CATKIN_DEPENDS roscpp rospy std_msgs
