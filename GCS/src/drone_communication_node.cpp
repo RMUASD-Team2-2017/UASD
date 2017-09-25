@@ -15,12 +15,9 @@
 #include "mavros_msgs/ParamSet.h"
 #include "mavros_msgs/SetMode.h"
 #include "mavros_msgs/WaypointList.h"
+#include "mavros_msgs/BatteryStatus.h"
 
-
-
-// start mission
-
-#include "mavlink_defines.h"
+#include "mavlink_defines.h"	// For mavlink defines not accessible in other files
 
 #include "gcs/path.h"
 #include "gcs/uploadMission.h"
@@ -114,6 +111,7 @@ private:
 	ros::Publisher dronePositionPublisher;
 	ros::Publisher statePublisher;
 	ros::Publisher missionStatusPublisher;
+	ros::Publisher batteryStatusPublisher;
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
@@ -122,11 +120,15 @@ private:
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 	ros::Subscriber missionStatusSubscriber;
 	void missionStatusSubscriberCallback(const mavros_msgs::WaypointList &msg);
+	ros::Subscriber batteryStatusSubscriber;
+	void batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg);
+	
 };
 
 DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 {
 	nh = n;
+	
 	// Services
 	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback, this);
  	clearMissionService = nh.advertiseService("/drone_communication/clearMission",&DRONE_COMM_CLASS::clearMissionCallback,this);
@@ -137,7 +139,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	startMissionServer = nh.advertiseService("/drone_communication/startMission",&DRONE_COMM_CLASS::startMissionCallback,this);
 	stopMissionServer = nh.advertiseService("/drone_communication/stopMission",&DRONE_COMM_CLASS::stopMissionCallback,this);
 
-
+	// Service clients
 	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros1/mission/push");
 	clearMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointClear>("/mavros1/mission/clear");
 	armServiceClient = nh.serviceClient<mavros_msgs::CommandBool>("/mavros1/cmd/arming");
@@ -153,10 +155,12 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	dronePositionPublisher = nh.advertise<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1);
 	statePublisher = nh.advertise<mavros_msgs::State>("/drone_communication/droneState",1);
 	missionStatusPublisher = nh.advertise<mavros_msgs::WaypointList>("/drone_communication/missionState",1);
+	batteryStatusPublisher = nh.advertise<mavros_msgs::BatteryStatus>("drone_communication/batteryStatus",1);
 	// Subscribers
 	stateSubscriber = nh.subscribe("/mavros1/state",1,&DRONE_COMM_CLASS::stateCallback,this);
 	globalPositionSubscriber = nh.subscribe("/mavros1/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
 	missionStatusSubscriber = nh.subscribe("/mavros1/mission/waypoints",1,&DRONE_COMM_CLASS::missionStatusSubscriberCallback, this);
+	batteryStatusSubscriber = nh.subscribe("/mavros1/battery",1,&DRONE_COMM_CLASS::batteryStatusSubscriberCallback,this);
 
 	heartbeatTimestamp = ros::Time::now().toSec();
 }
@@ -183,6 +187,12 @@ void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::Waypoi
 {
 	missionStatusPublisher.publish(msg);
 }
+
+void DRONE_COM_CLASS::batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg)
+{
+	batteryStatusPublisher.publish(msg);
+}
+
 
 
 void DRONE_COMM_CLASS::checkHeartbeat()
