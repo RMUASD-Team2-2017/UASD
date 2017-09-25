@@ -58,6 +58,7 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  communicationStatus.msg
   path.msg
   waypoint.msg
 )
@@ -120,6 +121,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  CATKIN_DEPENDS
+  message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES ground_control_station
 #  CATKIN_DEPENDS roscpp rospy std_msgs

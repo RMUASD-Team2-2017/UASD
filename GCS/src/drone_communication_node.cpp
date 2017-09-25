@@ -30,6 +30,8 @@
 #include "gcs/land.h"
 #include "gcs/startMission.h"
 #include "gcs/stopMission.h"
+#include "gcs/communicationStatus.h"
+
 
 
 // TODO Include mavlink to/from message types
@@ -103,10 +105,11 @@ private:
 	ros::ServiceClient setModeServiceClient;
 
 	// Published topics
+	ros::Publisher communicationStatusPublisher;
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
-  void stateCallback(const mavros_msgs::State &msg);
+  	void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 
@@ -142,6 +145,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros1/set_mode");
 
 	// Publishers
+	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
 	// Subscribers
 	stateSubscriber = nh.subscribe("/mavros1/state",1,&DRONE_COMM_CLASS::stateCallback,this);
 	globalPositionSubscriber = nh.subscribe("/mavros1/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
@@ -170,8 +174,12 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 	double now = ros::Time::now().toSec();
 	if(now - heartbeatTimestamp > HEARTBEAT_MAX_TIMEOUT)
 	{
-		ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
+		gcs::communicationStatus statusMsg;
+		statusMsg.connected = false;
+		communicationStatusPublisher.publish(statusMsg);
+		//ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
 	}
+
 }
 
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
@@ -476,10 +484,12 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, VALUE_AS_STRING(DRONE_COMM_CLASS));
 	ros::NodeHandle nh;
 	DRONE_COMM_CLASS dc(nh);
+	ros::Rate rate(20);
 	while(ros::ok())
 	{
 		dc.checkHeartbeat();
 		ros::spinOnce();
+		rate.sleep();
 	}
   return 0;
 }
