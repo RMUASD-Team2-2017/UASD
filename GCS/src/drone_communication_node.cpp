@@ -44,6 +44,9 @@
 #define DEBUG true
 #define HEARTBEAT_MAX_TIMEOUT 5 //Seconds
 
+#define HOLD_TIME 				0.0
+#define ACCEPTANCE_RADIUS		1.0
+
 #define ROS_TAKEOFF 0
 #define ROS_WAYPOINT 1
 #define ROS_LAND 2
@@ -52,7 +55,8 @@
 #define ERROR_CLEARING_MISSION 	1
 #define ERROR_PARAM_SET 		2
 #define ERROR_SET_MODE			3
-#define ERROR					4
+#define ERROR_UPLOAD_MISSION	4
+#define ERROR					5
 struct drone_status{
 	sensor_msgs::NavSatFix gpsPosition;
 	mavros_msgs::State state;
@@ -112,12 +116,6 @@ private:
   	void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
-
-
-	// TODO Implement service uploadWaypoints()
-
-	// TODO Implement service monitorFlight()
-
 };
 
 DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
@@ -185,7 +183,7 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
 {
 	if(DEBUG) ROS_INFO("Uploading mission");
-	res.result = 0;
+	res.result = SUCCESS;
 	mavros_msgs::WaypointClear clearMsg;
 	if(!clearMissionServiceClient.call(clearMsg))
 	{
@@ -212,107 +210,110 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 
 
 
-	// int numberOfWaypoints = req.waypoints.path.size();
-	// if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
-	// mavros_msgs::WaypointPush missionMsg;
-	// for(int i=0; i<numberOfWaypoints; i++)
-	// {
-	// 	mavros_msgs::Waypoint wp;
-	// 	wp.frame = FRAME_GLOBAL_REL_ALT;
-	// 	switch (req.waypoints.path[i].type) {
-	// 		case ROS_TAKEOFF:
-	// 			wp.command = NAV_TAKEOFF;
-	// 			break;
-	// 		case ROS_WAYPOINT:
-	// 			wp.command = NAV_WAYPOINT;
-	// 			break;
-	// 		case ROS_LAND:
-	// 			wp.command = NAV_LAND;
-	// 			break;
-	// 		default:
-	// 			ROS_ERROR("WRONG COMMAND TYPE");
-	// 			break;
-	// 	}
-	// 	wp.is_current = false;
-	// 	wp.autocontinue = true;
-	// 	wp.x_lat = req.waypoints.path[i].lat;
-	// 	wp.y_long = req.waypoints.path[i].lon;
-	// 	wp.z_alt = req.waypoints.path[i].alt;
-	// 	missionMsg.request.waypoints.push_back(wp);
-	// }
-
-	// REQUIRED STEPS that are implemented:
-	// Clear mission *
-	// Set NAV_DLL_ACT
-	// Upload mission
-	// Set mode AUTO.mission
-	// arm -> Do this with the arm command
-	// The drone will fly
-
-	// Investegate possibility to stop mission
-
+	int numberOfWaypoints = req.waypoints.path.size();
+	if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
 	mavros_msgs::WaypointPush missionMsg;
-	mavros_msgs::Waypoint wp;
-	wp.frame = FRAME_GLOBAL_REL_ALT;
-	wp.command = NAV_TAKEOFF;
-	wp.is_current = false;
-	wp.autocontinue = true;
-	wp.x_lat = 47.3977415;
-	wp.y_long = 8.5455943;
-	wp.z_alt = 5.0;
-	missionMsg.request.waypoints.push_back(wp);
+	for(int i=0; i<numberOfWaypoints; i++)
+	{
+		ROS_INFO("Wp: %i lat: %f lon: %f alt: %f type: %i", i, req.waypoints.path[i].lat , req.waypoints.path[i].lon, req.waypoints.path[i].alt, req.waypoints.path[i].type);
+		mavros_msgs::Waypoint wp;
+		wp.frame = FRAME_GLOBAL_REL_ALT;
+		switch (req.waypoints.path[i].type) {
+			case ROS_TAKEOFF:
+				wp.command = NAV_TAKEOFF;
+				// param1 minimum desired pitch (only fixed wing)
+				// Param2 empty
+				// Param3 empty
+				// param4 yaw, NAN for unchaged
+				break;
+			case ROS_WAYPOINT:
+				wp.command = NAV_WAYPOINT;
+				wp.param1 = HOLD_TIME;
+				wp.param2 = ACCEPTANCE_RADIUS;
+				wp.param3 = 0;		// Pass through 0, radius [m] cc > 0, radius [m] ccv < 0
+				wp.param4 = 0; 		// Yaw angle
+				break;
+			case ROS_LAND:
+				wp.command = NAV_LAND;
+				// param1 abort altitude. Altitude to climb to if landing is aborted
+				// param2 empty
+				// param3 empty
+				// param4 yaw. NaN for unchanged
+				break;
+			default:
+				ROS_ERROR("WRONG COMMAND TYPE");
+				break;
+		}
+		wp.is_current = false;
+		wp.autocontinue = true;
+		wp.x_lat = req.waypoints.path[i].lat;
+		wp.y_long = req.waypoints.path[i].lon;
+		wp.z_alt = req.waypoints.path[i].alt;
+		missionMsg.request.waypoints.push_back(wp);
+	}
 
-	mavros_msgs::Waypoint wp1;
-	wp1.frame = FRAME_GLOBAL_REL_ALT;
-	wp1.command = NAV_WAYPOINT;
-	wp1.is_current = false;
-	wp1.autocontinue = true;
-	wp1.param1 = 5.0;				// Hold time [decimal seconds]
-	wp1.param2 = 1.0;				// Acceptance radius [m]
-	wp1.param3 = 0.0;				// Pass through 0, radius [m] cc > 0, radius [m] ccv < 0
-	wp1.param4 = 180.0;			// Yaw angle
-	wp1.x_lat = 47.3977422;
-	wp1.y_long = 8.5455943;
-	wp1.z_alt = 5.0;
-	missionMsg.request.waypoints.push_back(wp1);
+	// mavros_msgs::WaypointPush missionMsg;
+	// mavros_msgs::Waypoint wp;
+	// wp.frame = FRAME_GLOBAL_REL_ALT;
+	// wp.command = NAV_TAKEOFF;
+	// wp.is_current = false;
+	// wp.autocontinue = true;
+	// wp.x_lat = 47.3977415;
+	// wp.y_long = 8.5455943;
+	// wp.z_alt = 5.0;
+	// missionMsg.request.waypoints.push_back(wp);
 
-	mavros_msgs::Waypoint wp2;
-	wp2.frame = FRAME_GLOBAL_REL_ALT;
-	wp2.command = NAV_WAYPOINT;
-	wp2.is_current = false;
-	wp2.autocontinue = true;
-	wp2.param1 = 5.0;				// Hold time [decimal seconds]
-	wp2.param2 = 1.0;				// Acceptance radius [m]
-	wp2.param3 = 0.0;				// Pass through 0, radius [m] cc > 0, radius [m] ccv < 0
-	wp2.param4 = 180.0;			// Yaw angle
-	wp2.x_lat = 47.3977430;
-	wp2.y_long = 8.5455940;
-	wp2.z_alt = 4.0;
-	missionMsg.request.waypoints.push_back(wp2);
+	// mavros_msgs::Waypoint wp1;
+	// wp1.frame = FRAME_GLOBAL_REL_ALT;
+	// wp1.command = NAV_WAYPOINT;
+	// wp1.is_current = false;
+	// wp1.autocontinue = true;
+	// wp1.param1 = 5.0;				// Hold time [decimal seconds]
+	// wp1.param2 = 1.0;				// Acceptance radius [m]
+	// wp1.param3 = 0.0;				// Pass through 0, radius [m] cc > 0, radius [m] ccv < 0
+	// wp1.param4 = 180.0;			// Yaw angle
+	// wp1.x_lat = 47.3977422;
+	// wp1.y_long = 8.5455943;
+	// wp1.z_alt = 5.0;
+	// missionMsg.request.waypoints.push_back(wp1);
 
-	mavros_msgs::Waypoint wp3;
-	wp3.frame = FRAME_GLOBAL_REL_ALT;
-	wp3.command = NAV_LAND;
-	wp3.is_current = false;
-	wp3.autocontinue = true;
-	//wp3.param1 = 5.0;
-	//wp3.param2 = 1.0;
-	//wp3.param3 = 0.0;
-	wp3.param4 = 0.0;
-	wp3.x_lat = 47.3977422;
-	wp3.y_long = 8.5455930;
-	wp3.z_alt = 5.0;
-	missionMsg.request.waypoints.push_back(wp3);
+	// mavros_msgs::Waypoint wp2;
+	// wp2.frame = FRAME_GLOBAL_REL_ALT;
+	// wp2.command = NAV_WAYPOINT;
+	// wp2.is_current = false;
+	// wp2.autocontinue = true;
+	// wp2.param1 = 5.0;				// Hold time [decimal seconds]
+	// wp2.param2 = 1.0;				// Acceptance radius [m]
+	// wp2.param3 = 0.0;				// Pass through 0, radius [m] cc > 0, radius [m] ccv < 0
+	// wp2.param4 = 180.0;			// Yaw angle
+	// wp2.x_lat = 47.3977430;
+	// wp2.y_long = 8.5455940;
+	// wp2.z_alt = 4.0;
+	// missionMsg.request.waypoints.push_back(wp2);
+
+	// mavros_msgs::Waypoint wp3;
+	// wp3.frame = FRAME_GLOBAL_REL_ALT;
+	// wp3.command = NAV_LAND;
+	// wp3.is_current = false;
+	// wp3.autocontinue = true;
+	// //wp3.param1 = 5.0;
+	// //wp3.param2 = 1.0;
+	// //wp3.param3 = 0.0;
+	// wp3.param4 = 0.0;
+	// wp3.x_lat = 47.3977422;
+	// wp3.y_long = 8.5455930;
+	// wp3.z_alt = 5.0;
+	// missionMsg.request.waypoints.push_back(wp3);
 
 	if (uploadMissionServiceClient.call(missionMsg))
-  {
-    ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
-  }
-  else
-  {
-    ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
-	res.result = 4;
-  }
+	{
+    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	}
+	else
+	{
+    	ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+		res.result = ERROR_UPLOAD_MISSION;
+	}
 	return true;
 }
 
@@ -336,7 +337,7 @@ bool DRONE_COMM_CLASS::clearMissionCallback(gcs::clearMission::Request &req, gcs
 	else
 	{
 		ROS_ERROR("Failed to clear mission. Succes: %i Result %i", msg.response.success);
-		res.result = 1;
+		res.result = ERROR;
 	}
 	return true;
 }

@@ -9,6 +9,7 @@
 #include "gcs/waypoint.h"
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
+#include "gcs/deploy_request.h"
 
 
 #define NAME_AS_STRING(macro) #macro
@@ -54,6 +55,9 @@ class GCS_CONTROL_CLASS
 
 		ros::Subscriber path_subscriber;
 		void pathSubscriberCallback(const gcs::path::ConstPtr& msg);
+		ros::Subscriber deploy_subscriber;
+		void deploySubscriberCallback(const gcs::deploy_request::ConstPtr& msg);
+		
 		
 
 		/* Methods */ 
@@ -63,6 +67,7 @@ class GCS_CONTROL_CLASS
 		gcsState state = IDLE;
 		missionUploadState mission_upload_state = MISSION_IDLE;
 		gcs::path planned_path;
+		gcs::deploy_request deploy_request;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -107,8 +112,8 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	upload_mission_service_client = nh.serviceClient<gcs::uploadMission>("/drone_communication/uploadMission");
 	arm_service_client = nh.serviceClient<gcs::arm>("/drone_communication/arm");
 	
-	path_subscriber = nh.subscribe<gcs::path>("/path_planer/path",1,&GCS_CONTROL_CLASS::pathSubscriberCallback,this);
-
+	path_subscriber = nh.subscribe<gcs::path>("/path_planner/path",1,&GCS_CONTROL_CLASS::pathSubscriberCallback,this);
+	deploy_subscriber = nh.subscribe<gcs::deploy_request>("/web_interface/deploy_request",1,&GCS_CONTROL_CLASS::deploySubscriberCallback,this);
 }
 
 void GCS_CONTROL_CLASS::run()
@@ -118,20 +123,23 @@ void GCS_CONTROL_CLASS::run()
 		case IDLE:
 			{
 				// Continuosly monitor drone and docking station
+				ROS_INFO("IDLE");
 			}
 			break;
 		case RECEIVED_DISTRESS_CALL:
 			{
+				ROS_INFO("RECEIVED_DISTRESS_CALL");
+				
 				// Start preflight check
 				
 				// Start path planning
 				gcs::planPath path_request;
-				path_request.request.origin.lat = 55.0;
-				path_request.request.origin.lon = 10.0;
-				path_request.request.origin.alt = 10.0;
-				path_request.request.goal.lat = 55.5;
-				path_request.request.goal.lon = 10.0;
-				path_request.request.goal.alt = 10.0;
+				path_request.request.origin.lat = 47.3977417;
+				path_request.request.origin.lon = 8.5455937;
+				path_request.request.origin.alt = 495.0;
+				path_request.request.goal.lat = 47.39770;
+				path_request.request.goal.lon = 8.5455937;
+				path_request.request.goal.alt = 0;
 				if ( !plan_path_service_client.call(path_request) )
 					ROS_ERROR("Plan path failed");
 				state = PREPARE;
@@ -139,8 +147,11 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case PREPARE:
 			{
+				ROS_INFO("PREPARE");
+				
 				if( mission_upload_state == PATH_RECEIVED )
 				{
+					ROS_INFO("Trying to upload");
 					gcs::uploadMission mission_upload_msg;
 					mission_upload_msg.request.waypoints = planned_path;
 					if( upload_mission_service_client.call(mission_upload_msg) && mission_upload_msg.response.result == SUCCESS )
@@ -162,12 +173,15 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case WAIT_FOR_READY:
 			{
+				ROS_INFO("WAIT_FOR_READY");
+				
 				// wait for opening of docking station
 				state = DEPLOY;
 			}
 			break;
 		case DEPLOY:
 			{
+				ROS_INFO("DEPLOY");
 				//If everything ok -> arm the drone
 				gcs::arm arm_msg;
 				if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
@@ -180,11 +194,13 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case FLYING:
 			{
+				ROS_INFO("FLYING");				
 				// Monitor during flight
 			}
 			break;
 		case ARRIVED:
 			{
+				ROS_INFO("ARRIVED");				
 				// ?
 			}
 			break;
@@ -199,6 +215,12 @@ void GCS_CONTROL_CLASS::pathSubscriberCallback(const gcs::path::ConstPtr& msg)
 {
 	planned_path = *msg;
 	mission_upload_state = PATH_RECEIVED;
+}
+
+void GCS_CONTROL_CLASS::deploySubscriberCallback(const gcs::deploy_request::ConstPtr& msg)
+{
+	deploy_request = *msg;
+	state = RECEIVED_DISTRESS_CALL;
 }
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()

@@ -87,7 +87,7 @@ void PATH_PLANNER_CLASS::planPath()
 	goal.type = WAYPOINT;
 	plannedPath.path.push_back(goal);
 	goal_land.alt = 0;
-	goal.type = LAND;
+	goal_land.type = LAND;
 	plannedPath.path.push_back(goal_land);
 	pathPublisher.publish(plannedPath);
 	isPlanning = false;
