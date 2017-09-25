@@ -30,6 +30,8 @@
 #include "gcs/land.h"
 #include "gcs/startMission.h"
 #include "gcs/stopMission.h"
+#include "gcs/communicationStatus.h"
+
 
 
 // TODO Include mavlink to/from message types
@@ -46,6 +48,11 @@
 #define ROS_WAYPOINT 1
 #define ROS_LAND 2
 
+#define SUCCESS					0
+#define ERROR_CLEARING_MISSION 	1
+#define ERROR_PARAM_SET 		2
+#define ERROR_SET_MODE			3
+#define ERROR					4
 struct drone_status{
 	sensor_msgs::NavSatFix gpsPosition;
 	mavros_msgs::State state;
@@ -98,10 +105,11 @@ private:
 	ros::ServiceClient setModeServiceClient;
 
 	// Published topics
+	ros::Publisher communicationStatusPublisher;
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
-  void stateCallback(const mavros_msgs::State &msg);
+  	void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 
@@ -117,7 +125,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	nh = n;
 	// Services
 	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback, this);
-  clearMissionService = nh.advertiseService("/drone_communication/clearMission",&DRONE_COMM_CLASS::clearMissionCallback,this);
+ 	clearMissionService = nh.advertiseService("/drone_communication/clearMission",&DRONE_COMM_CLASS::clearMissionCallback,this);
 	armService = nh.advertiseService("/drone_communication/arm",&DRONE_COMM_CLASS::armCallback,this);
 	disarmService = nh.advertiseService("/drone_communication/disarm",&DRONE_COMM_CLASS::disarmCallback,this);
 	takeoffService = nh.advertiseService("/drone_communication/takeoff",&DRONE_COMM_CLASS::takeoffCallback,this);
@@ -137,6 +145,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros1/set_mode");
 
 	// Publishers
+	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
 	// Subscribers
 	stateSubscriber = nh.subscribe("/mavros1/state",1,&DRONE_COMM_CLASS::stateCallback,this);
 	globalPositionSubscriber = nh.subscribe("/mavros1/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
@@ -165,8 +174,12 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 	double now = ros::Time::now().toSec();
 	if(now - heartbeatTimestamp > HEARTBEAT_MAX_TIMEOUT)
 	{
-		ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
+		gcs::communicationStatus statusMsg;
+		statusMsg.connected = false;
+		communicationStatusPublisher.publish(statusMsg);
+		//ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
 	}
+
 }
 
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
@@ -177,7 +190,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	if(!clearMissionServiceClient.call(clearMsg))
 	{
 		ROS_ERROR("Error in clearing mission");
-		res.result = 1;
+		res.result = ERROR_CLEARING_MISSION;
 		return false;
 	}
 	mavros_msgs::ParamSet paramMsg;
@@ -185,7 +198,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	if(!setParameterServiceClient.call(paramMsg))
 	{
 		ROS_ERROR("Error in setting NAV_DLL_ACT");
-		res.result = 2;
+		res.result = ERROR_PARAM_SET;
 		return false;
 	}
 	mavros_msgs::SetMode setModeMsg;
@@ -193,7 +206,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	if(!setModeServiceClient.call(setModeMsg))
 	{
 		ROS_ERROR("Error in setting mode AUTO.MISSION");
-		res.result = 3;
+		res.result = ERROR_SET_MODE;
 		return false;
 	}
 
@@ -298,6 +311,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
   else
   {
     ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	res.result = 4;
   }
 	return true;
 }
@@ -310,12 +324,12 @@ bool DRONE_COMM_CLASS::clearMissionCallback(gcs::clearMission::Request &req, gcs
 	{
 		if(msg.response.success == true)
 		{
-			res.result = 0;
+			res.result = SUCCESS;
 			ROS_INFO("Waypoints cleared. Succes: %i Result %i", msg.response.success);
 		}
 		else
 		{
-			res.result = 1;
+			res.result = ERROR;
 			ROS_ERROR("Failed to clear mission. Succes: %i Result %i", msg.response.success);
 		}
 	}
@@ -337,15 +351,18 @@ bool DRONE_COMM_CLASS::armCallback(gcs::arm::Request &req, gcs::arm::Response &r
 		if(msg.response.success == true)
 		{
 			ROS_INFO("Armed. Succes: %i Result %i", msg.response.success, msg.response.result);
+			res.result = SUCCESS;
 		}
 		else
 		{
 			ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+			res.result = ERROR;
 		}
 	}
 	else
 	{
 		ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+		res.result = ERROR;		
 	}
 	return true;
 }
@@ -360,17 +377,19 @@ bool DRONE_COMM_CLASS::disarmCallback(gcs::disarm::Request &req, gcs::disarm::Re
 		if(msg.response.success == true)
 		{
 			ROS_INFO("Disarmed. Succes: %i Result %i", msg.response.success, msg.response.result);
-			res.result = 0;
+			res.result = SUCCESS;
 		}
 		else
 		{
 			ROS_ERROR("Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
+			res.result = ERROR;
+			
 		}
 	}
 	else
 	{
 		ROS_ERROR("Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
-		res.result = 1;
+		res.result = ERROR;
 	}
 	return true;
 }
@@ -387,17 +406,17 @@ bool DRONE_COMM_CLASS::takeoffCallback(gcs::takeoff::Request &req, gcs::takeoff:
 		if(msg.response.success == true)
 		{
 			if(DEBUG) ROS_INFO("Take off. Succes: %i Result %i", msg.response.success, msg.response.result);
-			res.result = 0;
+			res.result = SUCCESS;
 		}
 		else
 		{
-			res.result = 1;
+			res.result = ERROR;
 			ROS_ERROR("Failed to take off. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
-		res.result = 1;
+		res.result = ERROR;
 		ROS_ERROR("Failed to takeoff. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 }
@@ -414,17 +433,17 @@ bool DRONE_COMM_CLASS::landCallback(gcs::land::Request &req, gcs::land::Response
 		if(msg.response.success == true)
 		{
 			if(DEBUG) ROS_INFO("Landed. Succes: %i Result %i", msg.response.success, msg.response.result);
-			res.result = 0;
+			res.result = SUCCESS;
 		}
 		else
 		{
-			res.result = 1;
+			res.result = ERROR;
 			ROS_ERROR("Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
-		res.result = 1;
+		res.result = ERROR;
 		ROS_ERROR("Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 }
@@ -441,17 +460,17 @@ bool DRONE_COMM_CLASS::startMissionCallback(gcs::startMission::Request &req, gcs
 		if(msg.response.success == true)
 		{
 			if(DEBUG) ROS_INFO("Mission started. Succes: %i Result %i", msg.response.success, msg.response.result);
-			res.result = 0;
+			res.result = SUCCESS;
 		}
 		else
 		{
-			res.result = 1;
+			res.result = ERROR;
 			ROS_ERROR("Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
-		res.result = 1;
+		res.result = ERROR;
 		ROS_ERROR("Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 	return true;
@@ -465,10 +484,12 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, VALUE_AS_STRING(DRONE_COMM_CLASS));
 	ros::NodeHandle nh;
 	DRONE_COMM_CLASS dc(nh);
+	ros::Rate rate(20);
 	while(ros::ok())
 	{
 		dc.checkHeartbeat();
 		ros::spinOnce();
+		rate.sleep();
 	}
   return 0;
 }
