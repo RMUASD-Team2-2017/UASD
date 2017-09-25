@@ -35,21 +35,24 @@
         $drone_state = "dispatching";
         // Check if it is completely new information / a new request
         $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
+        //$sql = "SELECT EXISTS(SELECT 1 FROM `AED_requests` WHERE `request_id` = '$request_id_md5');";
         $result = mysqli_query($con, $sql);          //query
-        $array = mysqli_fetch_row($result);                          //fetch result
-        if (empty($array)) {
-            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '0', '');";
+        //$array = mysqli_fetch_row($result);                          //fetch result
+        //if (empty($array)) {
+        if (mysqli_num_rows($result) == 0) {
+            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '');";
             $result = mysqli_query($con, $sql);          //query
         } else {
             // See if a drone has been dispatched
+            $array = mysqli_fetch_row($result);                          //fetch result
             if (!empty($array[1])) {
                 // Drone has been dispatched
-                $return_time = date('Y-m-d G:i:s', strtotime($array[4]));
+                $return_time = date('Y-m-d H:i:s', strtotime($array[4]));
                 // Get drone state
-                $sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$array[1]'";
-                $result = mysqli_query($con, $sql);          //query
-                $array = mysqli_fetch_row($result);          //fetch result
-                //$drone_state = $array[6]; // Drone state
+                    //$sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$array[1]'";
+                    //$result = mysqli_query($con, $sql);          //query
+                    //$array = mysqli_fetch_row($result);          //fetch result
+                    //$drone_state = $array[6]; // Drone state
                 $drone_state = "dispatched";
             }
         }

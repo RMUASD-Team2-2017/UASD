@@ -19,7 +19,7 @@
 //#include <GeographicLib/TransverseMercatorExact.hpp>
 #include <GeographicLib/TransverseMercator.hpp>
 
-#define DEBUG false
+#define DEBUG true
 #define lat_index 2
 #define lon_index 3
 #define STEP_SIZE 0.01
@@ -42,9 +42,10 @@ class geofence
 public:
   geofence();
   ~geofence();
-  bool set(std::string, std::string);
   void set_fence(std::vector<point>);
+  void set_fence(std::string);
   void set_obstacles(std::vector<obstacle>);
+  void set_obstacles(std::string);
   void set_max_altitude(double);
   bool point_legal(point);
   bool edge_legal(point, point);

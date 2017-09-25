@@ -10,51 +10,77 @@ geofence::~geofence()
 
 // This function is not working. It should load the geofence from file
 // It is kept just to get the idea, until we can get it from the server.
-bool geofence::set(std::string geofence_path, std::string obstacle_path)
+void geofence::set_fence(std::string geofence_path)
 {
-  std::ifstream geofence_file ("/home/mathias/Downloads/Geofence.csv");//geofence_path);
-  if(geofence_file.is_open())
-  {
-    std::string line;
-    while(getline(geofence_file,line))
+    std::ifstream geofence_file (geofence_path);
+    std::string fieldValue, lat, lon;
+    std::getline  (geofence_file,fieldValue,'\n'); // Skip first line
+    int pointCount = 1;
+    std::vector<point> fence_points;
+    while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) ) 
     {
-
-      // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html
-      std::vector<std::string> splitted;
-      //std::istringstream iss(line);
-      //split(line,splitted);
-      //std::copy(std::istream_iterator<std::string>(iss),
-      //std::istream_iterator<std::string>(),
-      //std::back_inserter(splitted));
-      point p;
-      //std::string str = splitted[lat_index];
-      //p.lat = std::atof(str.c_str());
-      //p.lon = std::atof(splitted[lon_index].c_str());
-      //fence.push_back(p);
-
-      if(DEBUG) ROS_INFO("%i",splitted.size());
-      //ROS_INFO("%s",splitted[lat_index]);
+	    point temp_point;
+        // Skip first field in if statement (to ensure it does not repeat last line)
+        std::getline ( geofence_file, fieldValue, ',' );	// Skip second field
+        std::getline ( geofence_file, lat, ',' ); 			// Read Lat
+        std::getline ( geofence_file, lon, ',' ); 			// Read lon
+        std::getline ( geofence_file, fieldValue, '\n' ); // Skip the rest of the line
+        temp_point.lat = std::atof(lat.c_str());
+        temp_point.lon = std::atof(lon.c_str());
+        fence_points.push_back(temp_point);
     }
-
-
     geofence_file.close();
-    return true;
-  }
-  else
-  {
-    if(DEBUG) ROS_INFO("Not open");
-    return false;
-  }
+    set_fence(fence_points);
+
+    if(DEBUG)
+    {
+        std::cout << "Loaded geofence with points: lat lon" << std::endl;
+        for( int i = 0; i < fence_points.size(); i++)
+	        std::cout << (i+1) << ": " << fence_points[i].lat << " " << fence_points[i].lon << std::endl;
+    }
 }
 
-// void geofence::split(const std::string& str, std::vector<std::string>& cont, char delim = ' ')
-// {
-//     std::stringstream ss(str);
-//     std::string token;
-//     while (std::getline(ss, token, delim)) {
-//         cont.push_back(token);
-//     }
-// }
+void geofence::set_obstacles(std::string obstacle_path)
+{
+    std::ifstream obstacle_file (obstacle_path);
+    std::string height, pointsInObstacleStr, lat, lon, fieldValue;
+    std::vector<obstacle> temp_obstacles;
+    while( obstacle_file.good() && std::getline( obstacle_file, height, ',' ) )
+    {
+        std::getline( obstacle_file, pointsInObstacleStr, '\n' );
+        int pointsInObstacle = std::atoi(pointsInObstacleStr.c_str());
+        //std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;	
+        obstacle temp_obstacle;
+        temp_obstacle.height = std::atof(height.c_str());
+        for( int i = 0; i < pointsInObstacle; i++) // For all points in this obstacle
+        {
+            point temp_point;
+            std::getline ( obstacle_file, fieldValue, ',' );	// Skip first field (until delimiter ,)
+            std::getline ( obstacle_file, fieldValue, ',' );	// Skip second field (until delimiter ,)
+            std::getline ( obstacle_file, lat, ',' ); 			// Read Lat (until delimiter ,)
+            std::getline ( obstacle_file, lon, ',' ); 			// Read lon(until delimiter ,)
+            std::getline ( obstacle_file, fieldValue, '\n' ); // Skip the rest of the line	(until delimiter \n)
+            temp_point.lat = std::atof(lat.c_str());
+            temp_point.lon = std::atof(lon.c_str());
+            temp_obstacle.points.push_back(temp_point);
+        }
+        temp_obstacles.push_back(temp_obstacle);
+    }
+    obstacle_file.close();
+    set_obstacles(temp_obstacles);
+
+    if(DEBUG)
+    {
+        std::cout << "Loaded obstacles:" << std::endl;
+        for( int i = 0; i < temp_obstacles.size(); i++)
+        {
+            std::cout << "Obstacle" << i << ": lat lon" << std::endl;
+            std::cout << "\tHeight: " << temp_obstacles[i].height << std::endl;
+            for( int j = 0; j < temp_obstacles[i].points.size(); j++)
+                std::cout  << '\t' << temp_obstacles[i].points[j].lat << " " << temp_obstacles[i].points[j].lon << std::endl;
+        }
+    }
+}
 
 void geofence::set_fence(std::vector<point> _fence)
 {
