@@ -58,6 +58,7 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  deploy_request.msg
   communicationStatus.msg
   path.msg
   waypoint.msg

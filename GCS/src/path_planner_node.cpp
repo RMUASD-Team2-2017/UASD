@@ -18,7 +18,7 @@
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
 
 #define PATH_PLANNER_CLASS path_planner
-#define CRUISE_HEIGHT 30
+#define CRUISE_HEIGHT 5
 #define TAKEOFF 0
 #define WAYPOINT 1
 #define LAND 2
@@ -79,15 +79,17 @@ void PATH_PLANNER_CLASS::planPath()
 {
 	// NOTE: Implement a better path planner and use geofence
 	gcs::path plannedPath;
-	origin.alt = CRUISE_HEIGHT;
-	origin.type = TAKEOFF;
-	plannedPath.path.push_back(origin);
-	gcs::waypoint goal_land = goal;
+	gcs::waypoint origin_temp = origin;
+	origin_temp.alt = CRUISE_HEIGHT;
+	origin_temp.type = TAKEOFF;
+	plannedPath.path.push_back(origin_temp);
+	gcs::waypoint goal_temp = goal;
 	goal.alt = CRUISE_HEIGHT;
 	goal.type = WAYPOINT;
 	plannedPath.path.push_back(goal);
+	gcs::waypoint goal_land = goal;
 	goal_land.alt = 0;
-	goal.type = LAND;
+	goal_land.type = LAND;
 	plannedPath.path.push_back(goal_land);
 	pathPublisher.publish(plannedPath);
 	isPlanning = false;
