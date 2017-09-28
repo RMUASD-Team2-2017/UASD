@@ -10,6 +10,7 @@
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
 #include "gcs/deploy_request.h"
+#include "gcs/startMission.h"
 
 #include "sensor_msgs/NavSatFix.h"
 
@@ -56,6 +57,7 @@ class GCS_CONTROL_CLASS
 		ros::ServiceClient plan_path_service_client;
 		ros::ServiceClient upload_mission_service_client;
 		ros::ServiceClient arm_service_client;
+		ros::ServiceClient start_mission_service_client;
 
 		ros::Subscriber path_subscriber;
 		void pathSubscriberCallback(const gcs::path::ConstPtr& msg);
@@ -65,11 +67,11 @@ class GCS_CONTROL_CLASS
 		void droneGpsSubscriberCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
 		ros::Subscriber mission_state_subscriber;
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
-		
-		
-		
 
-		/* Methods */ 
+
+
+
+		/* Methods */
 
 
 		/* Attributes */
@@ -89,28 +91,28 @@ class GCS_CONTROL_CLASS
 	// 2 Receive distress call from database
 	// - Http get GPS position and timestamp from database
 	// TODO
-	
+
 	// 3 Initiate pre-flight check
 	// - Call service preflight() from pre_flight_node
 	// TODO
-	
+
 	// 4 Perform path planning
 	// - Call service planPath() from path_planner_node
 	// TODO
-	
+
 	// 5 Open docking station
 	// - Call service openDock() from docking_station_node
 	// TODO
-	
+
 	// 6 Upload path to drone and initiate flight
 	// - Call service uploadWaypoints() from drone_communication_node
 	// TODO
-	
+
 	// 7 Monitor the flight (Error procedure)
 	// - Call service monitorFlight() from drone_communication_node subscribing to mavlink/from
 	// - In case of extended link loss, do something
 	// TODO
-	
+
 	// 8 Update database
 	// - Http post flight information (heartbeat, battery voltage, etc.) to database
 	// TODO
@@ -124,7 +126,8 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	plan_path_service_client = nh.serviceClient<gcs::planPath>("/path_planner/plan");
 	upload_mission_service_client = nh.serviceClient<gcs::uploadMission>("/drone_communication/uploadMission");
 	arm_service_client = nh.serviceClient<gcs::arm>("/drone_communication/arm");
-	
+	start_mission_service_client = nh.serviceClient<gcs::startMission>("drone_communication/startMission");
+
 	path_subscriber = nh.subscribe<gcs::path>("/path_planner/path",1,&GCS_CONTROL_CLASS::pathSubscriberCallback,this);
 	deploy_subscriber = nh.subscribe<gcs::deploy_request>("/web_interface/deploy_request",1,&GCS_CONTROL_CLASS::deploySubscriberCallback,this);
 	drone_gps_subscriber = nh.subscribe<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1,&GCS_CONTROL_CLASS::droneGpsSubscriberCallback,this);
@@ -144,9 +147,9 @@ void GCS_CONTROL_CLASS::run()
 		case RECEIVED_DISTRESS_CALL:
 			{
 				ROS_INFO("RECEIVED_DISTRESS_CALL");
-				
+
 				// Start preflight check
-				
+
 				// Start path planning
 				gcs::planPath path_request;
 				path_request.request.origin.lat = current_drone_position.latitude;
@@ -163,7 +166,7 @@ void GCS_CONTROL_CLASS::run()
 		case PREPARE:
 			{
 				ROS_INFO("PREPARE");
-				
+
 				if( mission_upload_state == PATH_RECEIVED )
 				{
 					ROS_INFO("Trying to upload");
@@ -189,7 +192,7 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case WAIT_FOR_READY:
 			{
-				
+
 				// wait for opening of docking station
 				state = DEPLOY;
 			}
@@ -198,29 +201,39 @@ void GCS_CONTROL_CLASS::run()
 			{
 				ROS_INFO("DEPLOY");
 				//If everything ok -> arm the drone
-				gcs::arm arm_msg;
-				if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
-				{
-					state = FLYING;
-					ROS_INFO("FLYING");
-					
-				}
-				else
-					ROS_ERROR("Failed to arm");
+				// gcs::startMission start_msg;
+				// if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
+				// {
+				// 	state = FLYING;
+				// 	ROS_INFO("FLYING");
+				//
+				// }
+				// else
+				// 	ROS_ERROR("Failed to arm");
+
+					gcs::arm arm_msg;
+					if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
+					{
+						state = FLYING;
+						ROS_INFO("FLYING");
+
+					}
+					else
+						ROS_ERROR("Failed to arm");
 			}
 			break;
 		case FLYING:
 			{
 				if( last_waypoint == (number_of_waypoints-1) && current_waypoint == 0 )
 				{
-					state = ARRIVED;	
+					state = ARRIVED;
 					ROS_INFO("ARRIVED");
 				}
 				// Monitor during flight
 			}
 			break;
 		case ARRIVED:
-			{				
+			{
 				// ?
 			}
 			break;
@@ -228,7 +241,7 @@ void GCS_CONTROL_CLASS::run()
 			ROS_ERROR("Bad state");
 			/* Default Code */
 	}
-	
+
 }
 
 void GCS_CONTROL_CLASS::pathSubscriberCallback(const gcs::path::ConstPtr& msg)
