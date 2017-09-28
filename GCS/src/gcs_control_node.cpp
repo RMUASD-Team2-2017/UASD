@@ -10,6 +10,9 @@
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
 #include "gcs/deploy_request.h"
+#include "gcs/dockData.h"
+#include "gcs/openDock.h"
+#include "gcs/preFlight.h"
 
 #include "sensor_msgs/NavSatFix.h"
 
@@ -56,6 +59,8 @@ class GCS_CONTROL_CLASS
 		ros::ServiceClient plan_path_service_client;
 		ros::ServiceClient upload_mission_service_client;
 		ros::ServiceClient arm_service_client;
+		ros::ServiceClient open_dock_service_client;
+		ros::ServiceClient pre_flight_service_client;
 
 		ros::Subscriber path_subscriber;
 		void pathSubscriberCallback(const gcs::path::ConstPtr& msg);
@@ -65,6 +70,9 @@ class GCS_CONTROL_CLASS
 		void droneGpsSubscriberCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
 		ros::Subscriber mission_state_subscriber;
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
+		ros::Subscriber dock_data_subscriber;
+		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
+		
 		
 		
 		
@@ -81,26 +89,27 @@ class GCS_CONTROL_CLASS
 		int current_waypoint = 0;
 		int last_waypoint = 0;
 		int number_of_waypoints = 0;
+		gcs::dockData dock_sensor_data;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
-	// TODO
+	// Implemented as dockData topic
 
 	// 2 Receive distress call from database
 	// - Http get GPS position and timestamp from database
 	// TODO
 	
 	// 3 Initiate pre-flight check
-	// - Call service preflight() from pre_flight_node
-	// TODO
+	// - Call service preFlight from pre_flight_node
+	// 
 	
 	// 4 Perform path planning
 	// - Call service planPath() from path_planner_node
 	// TODO
 	
 	// 5 Open docking station
-	// - Call service openDock() from docking_station_node
-	// TODO
+	// - Call service openDock from docking_station_node
+	// 
 	
 	// 6 Upload path to drone and initiate flight
 	// - Call service uploadWaypoints() from drone_communication_node
@@ -124,11 +133,15 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	plan_path_service_client = nh.serviceClient<gcs::planPath>("/path_planner/plan");
 	upload_mission_service_client = nh.serviceClient<gcs::uploadMission>("/drone_communication/uploadMission");
 	arm_service_client = nh.serviceClient<gcs::arm>("/drone_communication/arm");
+	open_dock_service_client = nh.serviceClient<gcs::openDock>("/docking_station/openDock");
+	pre_flight_service_client = nh.serviceClient<gcs::preFlight>("/pre_flight_node/preFlight");
 	
 	path_subscriber = nh.subscribe<gcs::path>("/path_planner/path",1,&GCS_CONTROL_CLASS::pathSubscriberCallback,this);
 	deploy_subscriber = nh.subscribe<gcs::deploy_request>("/web_interface/deploy_request",1,&GCS_CONTROL_CLASS::deploySubscriberCallback,this);
 	drone_gps_subscriber = nh.subscribe<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1,&GCS_CONTROL_CLASS::droneGpsSubscriberCallback,this);
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
+	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
+
 }
 
 void GCS_CONTROL_CLASS::run()
@@ -137,6 +150,16 @@ void GCS_CONTROL_CLASS::run()
 	{
 		case IDLE:
 			{
+				if (dock_sensor_data.temperature > 35 ||
+					dock_sensor_data.temperature < 15 ) // TODO check dock_sensor_data.humidity 
+				{
+					ROS_INFO("Check docking station conditions.");
+				}
+				if (dock_sensor_data.temperature > 50 ||
+					dock_sensor_data.temperature < 0 ) // TODO check dock_sensor_data.humidity 
+				{
+					ROS_ERROR("Docking station conditions critical.");
+				}
 				// Continuosly monitor drone and docking station
 				//ROS_INFO("IDLE");
 			}
@@ -182,16 +205,28 @@ void GCS_CONTROL_CLASS::run()
 				// if weather ok, open docking station
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
 				{
-					state = WAIT_FOR_READY;
-					ROS_INFO("WAIT_FOR_READY");
+					// TODO give more information on check failure
+					gcs::preFlight pre_flight_msg;
+					if ( pre_flight_service_client.call(pre_flight_msg) && pre_flight_msg.response.result == true)
+					{
+						state = WAIT_FOR_READY;
+						ROS_INFO("WAIT_FOR_READY");
+					}
+					else
+						ROS_ERROR("Pre-flight check failed.");
 				}
 			}
 			break;
 		case WAIT_FOR_READY:
 			{
-				
-				// wait for opening of docking station
-				state = DEPLOY;
+				gcs::openDock open_dock_msg;
+				if ( open_dock_service_client.call(open_dock_msg) && open_dock_msg.response.dockIsOpen == true)
+				{
+					state = DEPLOY;
+					ROS_INFO("DEPLOY");
+				}
+				else
+					ROS_ERROR("Failed to open docking station.");
 			}
 			break;
 		case DEPLOY:
@@ -263,7 +298,10 @@ void GCS_CONTROL_CLASS::missionStateSubscriberCallback(const mavros_msgs::Waypoi
 	}
 }
 
-
+void GCS_CONTROL_CLASS::dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg)
+{
+	dock_sensor_data = *msg;
+}
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
 {}

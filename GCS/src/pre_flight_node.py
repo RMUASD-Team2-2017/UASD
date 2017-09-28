@@ -26,7 +26,7 @@ def pre_flight():
 	weather = Weather()
 	weather.setLocation(55.471089000000006, 10.330159499999999, 1)
 	rospy.loginfo(weather.getWindSpeed())
-	pfs = rospy.Service('pre_flight_node/preflight', preFlight, handle_pre_flight_srv)
+	pfs = rospy.Service('pre_flight_node/preFlight', preFlight, handle_pre_flight_srv)
 	rospy.spin()
 	    
 if __name__ == '__main__':
