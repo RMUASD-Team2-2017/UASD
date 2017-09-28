@@ -62,6 +62,7 @@ add_message_files(
   communicationStatus.msg
   path.msg
   waypoint.msg
+  dockData.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -77,6 +78,7 @@ add_service_files(
   land.srv
   startMission.srv
   stopMission.srv
+  openDock.srv
 )
 
 ## Generate actions in the 'action' folder
