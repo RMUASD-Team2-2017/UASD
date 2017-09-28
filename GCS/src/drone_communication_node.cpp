@@ -188,12 +188,10 @@ void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::Waypoi
 	missionStatusPublisher.publish(msg);
 }
 
-void DRONE_COM_CLASS::batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg)
+void DRONE_COMM_CLASS::batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg)
 {
 	batteryStatusPublisher.publish(msg);
 }
-
-
 
 void DRONE_COMM_CLASS::checkHeartbeat()
 {
