@@ -10,13 +10,10 @@
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
 #include "gcs/deploy_request.h"
-<<<<<<< HEAD
 #include "gcs/startMission.h"
-=======
 #include "gcs/dockData.h"
 #include "gcs/openDock.h"
 #include "gcs/preFlight.h"
->>>>>>> 42875b6c821fa0adaf09617325f0259fdccf4904
 
 #include "sensor_msgs/NavSatFix.h"
 
@@ -63,12 +60,9 @@ class GCS_CONTROL_CLASS
 		ros::ServiceClient plan_path_service_client;
 		ros::ServiceClient upload_mission_service_client;
 		ros::ServiceClient arm_service_client;
-<<<<<<< HEAD
 		ros::ServiceClient start_mission_service_client;
-=======
 		ros::ServiceClient open_dock_service_client;
 		ros::ServiceClient pre_flight_service_client;
->>>>>>> 42875b6c821fa0adaf09617325f0259fdccf4904
 
 		ros::Subscriber path_subscriber;
 		void pathSubscriberCallback(const gcs::path::ConstPtr& msg);
@@ -78,18 +72,8 @@ class GCS_CONTROL_CLASS
 		void droneGpsSubscriberCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
 		ros::Subscriber mission_state_subscriber;
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
-<<<<<<< HEAD
-=======
 		ros::Subscriber dock_data_subscriber;
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
-
-
-
-
->>>>>>> 42875b6c821fa0adaf09617325f0259fdccf4904
-
-
-
 
 		/* Methods */
 
@@ -114,32 +98,17 @@ class GCS_CONTROL_CLASS
 	// TODO
 
 	// 3 Initiate pre-flight check
-<<<<<<< HEAD
 	// - Call service preflight() from pre_flight_node
-	// TODO
 
-=======
-	// - Call service preFlight from pre_flight_node
-	//
-
->>>>>>> 42875b6c821fa0adaf09617325f0259fdccf4904
 	// 4 Perform path planning
 	// - Call service planPath() from path_planner_node
-	// TODO
 
 	// 5 Open docking station
-<<<<<<< HEAD
 	// - Call service openDock() from docking_station_node
-	// TODO
 
-=======
-	// - Call service openDock from docking_station_node
-	//
 
->>>>>>> 42875b6c821fa0adaf09617325f0259fdccf4904
 	// 6 Upload path to drone and initiate flight
 	// - Call service uploadWaypoints() from drone_communication_node
-	// TODO
 
 	// 7 Monitor the flight (Error procedure)
 	// - Call service monitorFlight() from drone_communication_node subscribing to mavlink/from
