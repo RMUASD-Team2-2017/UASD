@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import web_interface
-from gcs.msg import waypoint, setPreflightData
+from gcs.msg import waypoint, setPreflightData, deploy_request
 from std_msgs.msg import Bool, String
 
 interface = web_interface.web_interface()
@@ -29,7 +29,7 @@ def test():
 
     ### Setup ROS ###
     rospy.init_node('web_interface')
-    deploy_request_publisher = rospy.Publisher('/web_interface/deploy_request',waypoint, queue_size=1)
+    deploy_request_publisher = rospy.Publisher('/web_interface/deploy_request',deploy_request, queue_size=1)
     mission_done_Subscriber = rospy.Subscriber('web_interface/listen/mission_done',Bool, missionDoneCallback)
     set_preflight_data_Subscriber = rospy.Subscriber('/web_interface/listen/set_preflight_data',setPreflightData,setPreflightDataCallback)
     set_uav_state_subscriber = rospy.Subscriber('/web_interface/listen/set_uav_state',String,setUavStateCallback)
@@ -39,10 +39,10 @@ def test():
         (update_count,lat,lng,alt) = interface.getDeployRequest()
         print 'Checking',update_count,lat,lng,alt
         if update_count == 0:
-            msg = waypoint()
-            msg.lat = lat
-            msg.lon = lng
-            msg.alt = alt
+            msg = deploy_request()
+            msg.point.lat = lat
+            msg.point.lon = lng
+            msg.point.alt = alt
             deploy_request_publisher.publish(msg)
             print 'Published deploy request'
             rospy.loginfo(msg)
