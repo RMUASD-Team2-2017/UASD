@@ -63,6 +63,7 @@ add_message_files(
   path.msg
   waypoint.msg
   dockData.msg
+  setPreflightData.msg
 )
 
 ## Generate services in the 'srv' folder

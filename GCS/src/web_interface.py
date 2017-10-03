@@ -1,6 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+from gcs.msg import waypoint, path
 
 class web_interface:
     def __init__(self):
@@ -17,14 +18,15 @@ class web_interface:
 
     def getDeployRequest(self):
         get_requests_url = 'https://www.techgen.dk/AED/admin/get_requests.php'
-        get_specific_requests_url = 'https://www.techgen.dk/AED/admin/get_specific_requests.php'
+        get_specific_requests_url = 'https://www.techgen.dk/AED/admin/get_specific_request_single.php'
         test_url = 'http://httpbin.org/post'
 
         lat = 0.0
         lng = 0.0
         alt = 0.0
         ### Get all requests ###
-        r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password))
+        payload = {'show_uncompleted': 1}
+        r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
         jsonformat = json.loads(r.text) # convert to json
 
         if(not self.active and int(jsonformat[0]["completed"]) == 0):   # If a mission is not active and the newest request is uncompleted
@@ -44,10 +46,15 @@ class web_interface:
 
             jsonformat_specific = json.loads(r_specific.text)
             print '*****************************************************'
-            print jsonformat_specific[0]
-            lat = float(jsonformat_specific[0]["loc_lat"])
-            lng = float(jsonformat_specific[0]["loc_lng"])
-            alt = float(jsonformat_specific[0]["altitude"])
+            #print jsonformat_specific[0]
+            # lat = float(jsonformat_specific[0]["loc_lat"])
+            # lng = float(jsonformat_specific[0]["loc_lng"])
+            # alt = float(jsonformat_specific[0]["altitude"])
+            print jsonformat_specific
+            lat = float(jsonformat_specific["loc_lat"])
+            lng = float(jsonformat_specific["loc_lng"])
+            alt = float(jsonformat_specific["altitude"])
+
             print lat, lng, alt
             self.update_count = self.update_count + 1
 
@@ -64,4 +71,26 @@ class web_interface:
         print 'Mission marked as completed'
         print '#################################################################################'
 
-# setRequestCompleted
+    def setPreflightData(self,drone_id,data):
+        set_preflight_data_url = 'https://www.techgen.dk/AED/admin/set_drone_preflight.php'
+        path_string = ''
+        i = 0
+        for waypoints in data.path:
+            path_string = '(' + str(data.path[i].lat) + ',' + str(data.path[i].lon) + ')'
+            i=i+1
+        weather_string = 'Great, great weather!'
+        payload = { 'drone_id': drone_id, 'cur_lat': data.cur_position.lat, 'cur_lng': data.cur_position.lon, 'target_lat': data.target_position.lat, 'target_lng': data.target_position.lon, 'path': path_string, 'weather': data.weather.data}
+        r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        print r.text
+
+    def setUavState(self,drone_id,state):
+        set_uav_state_url = 'https://www.techgen.dk/AED/admin/set_drone_state.php'
+        payload = {'drone_id': drone_id, 'state': state}
+        r = requests.post(url = set_uav_state_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        print r.text
+
+    def setUavCurrentLocation(self,drone_id,data):
+        set_uav_current_location = 'https://www.techgen.dk/AED/admin/set_drone_current_position.php'
+        payload = {'drone_id': drone_id, 'lat': data.lat, 'lng': data.lon}
+        r = requests.post(url = set_uav_current_location,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        print r.text

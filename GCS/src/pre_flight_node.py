@@ -11,7 +11,7 @@ def handle_pre_flight_srv(req):
 	check = float(weather.getWindSpeed()) < 10 # m/s
 	is_wet = float(weather.getHumidity()) > 50 # Percent
 	tmpt = float(weather.getTemperature()) # C
-	
+
 	if is_wet:
 		check = check & ((tmpt > 0) & (tmpt < 40))
 	else:
@@ -28,7 +28,7 @@ def pre_flight():
 	rospy.loginfo(weather.getWindSpeed())
 	pfs = rospy.Service('pre_flight_node/preFlight', preFlight, handle_pre_flight_srv)
 	rospy.spin()
-	    
+
 if __name__ == '__main__':
     try:
         pre_flight()
