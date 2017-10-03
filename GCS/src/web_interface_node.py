@@ -3,6 +3,7 @@ import rospy
 import web_interface
 from gcs.msg import waypoint, setPreflightData, deploy_request
 from std_msgs.msg import Bool, String
+from sensor_msgs.msg import NavSatFix
 
 interface = web_interface.web_interface()
 interface.setAuthentication('uasd','halogenlampe')
@@ -21,7 +22,6 @@ def setUavStateCallback(data):
 def setUavCurrentLocationCallback(data):
     drone_id = 1
     interface.setUavCurrentLocation(drone_id,data)
-
 def test():
     ### Setup interface ###
     #interface = web_interface.web_interface()
@@ -33,7 +33,8 @@ def test():
     mission_done_Subscriber = rospy.Subscriber('web_interface/listen/mission_done',Bool, missionDoneCallback)
     set_preflight_data_Subscriber = rospy.Subscriber('/web_interface/listen/set_preflight_data',setPreflightData,setPreflightDataCallback)
     set_uav_state_subscriber = rospy.Subscriber('/web_interface/listen/set_uav_state',String,setUavStateCallback)
-    set_uav_current_location = rospy.Subscriber('/web_interface/listen/set_uav_current_location',waypoint,setUavCurrentLocationCallback)
+    #set_uav_current_location = rospy.Subscriber('/web_interface/listen/set_uav_current_location',waypoint,setUavCurrentLocationCallback)
+    set_uav_current_location = rospy.Subscriber('/drone_communication/globalPosition',NavSatFix,setUavCurrentLocationCallback)
     rate = rospy.Rate(1)
     while not rospy.is_shutdown():
         (update_count,lat,lng,alt) = interface.getDeployRequest()

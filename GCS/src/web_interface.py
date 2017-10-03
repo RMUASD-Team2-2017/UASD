@@ -11,6 +11,9 @@ class web_interface:
         self.request_id = ""
         self.active = False
         self.update_count = -1
+        self.position_publish_limit_counter = 0
+        self.target_lat = 0.0
+        self.target_lng = 0.0
 
     def setAuthentication(self,_username,_password):
         self.username = _username
@@ -27,11 +30,15 @@ class web_interface:
         ### Get all requests ###
         payload = {'show_uncompleted': 1}
         r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        print "The request status is", r.status_code
-        if r.text == '0' or r.status_code != 200: # Handle empty response
-            return (1, lat, lng, alt)
-        jsonformat = json.loads(r.text) # convert to json
-
+        #print "The request status is", r.status_code
+        if r.text == '0' or int(r.status_code) != 200: # Handle empty response
+            return (-1, lat, lng, alt)
+        jsonformat = ''
+        try:
+            jsonformat = json.loads(r.text) # convert to json
+        except:
+            print 'Unexpected error in parsing r.text as json'
+            return (-2, lat, lng, alt)
         if(not self.active and int(jsonformat[0]["completed"]) == 0):   # If a mission is not active and the newest request is uncompleted
             print "Got a new request"
             self.request_id = jsonformat[0]["request_id"]
@@ -41,25 +48,28 @@ class web_interface:
         ### Get the position of an active request ###
         if(self.active):
             payload = {'request_id': self.request_id}
-            #headers = {'content-type': 'application/json'}#, 'Accept': 'text/plain'}
-            #headers = {'content-type': 'text/html'}
-            #headers =  {'content-type': 'multipart/form-data; boundary=----WebKitFormBoundaryVrO2Ct3n1m192cpt'}
-            #r_specific = requests.post(url = test_url,auth=HTTPBasicAuth(self.username,self.password),headers=headers,json=payload)
             r_specific = requests.post(url = get_specific_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
             print "The position status is", r.status_code
-            if r_specific.text == 'null' or r_specific.text == 0 or r.status_code != 200:
-                return (1, lat, lng, alt)
-            jsonformat_specific = json.loads(r_specific.text)
+            if r_specific.text == 'null' or r_specific.text == '0' or int(r.status_code) != 200:
+                return (-3, lat, lng, alt)
+            jsonformat_specific = ''
+            try:
+                jsonformat_specific = json.loads(r_specific.text)
+            except:
+                print 'Unexpected error in parsing r_specific as json'
+                return (-4, lat, lng, alt)
             print '*****************************************************'
+            # If using the non-single get_specific_request_url, use the indexing below
             #print jsonformat_specific[0]
             # lat = float(jsonformat_specific[0]["loc_lat"])
             # lng = float(jsonformat_specific[0]["loc_lng"])
             # alt = float(jsonformat_specific[0]["altitude"])
-            print jsonformat_specific
+            #print jsonformat_specific
             lat = float(jsonformat_specific["loc_lat"])
             lng = float(jsonformat_specific["loc_lng"])
             alt = float(jsonformat_specific["altitude"])
-
+            target_lat = lat
+            target_lng = lng
             print lat, lng, alt
             self.update_count = self.update_count + 1
 
@@ -86,16 +96,28 @@ class web_interface:
         weather_string = 'Great, great weather!'
         payload = { 'drone_id': drone_id, 'cur_lat': data.cur_position.lat, 'cur_lng': data.cur_position.lon, 'target_lat': data.target_position.lat, 'target_lng': data.target_position.lon, 'path': path_string, 'weather': data.weather.data}
         r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        print 'Preflight', r.text
+        #print 'Preflight', r.text
 
-    def setUavState(self,drone_id,state):
+    def setUavState(self,drone_id,state): #Check this
         set_uav_state_url = 'https://www.techgen.dk/AED/admin/set_drone_state.php'
         payload = {'drone_id': drone_id, 'state': state}
         r = requests.post(url = set_uav_state_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        print 'setUavState', r.text
+        #print 'setUavState', r.text
+        if state == 'transport':
+            drone_id = 1
+            eta = 0
+            self.setRequestDroneIdEta(drone_id,eta)
 
-    def setUavCurrentLocation(self,drone_id,data):
-        set_uav_current_location = 'https://www.techgen.dk/AED/admin/set_drone_current_position.php'
-        payload = {'drone_id': drone_id, 'lat': data.lat, 'lng': data.lon}
-        r = requests.post(url = set_uav_current_location,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        print 'setCurrentLocation', r.text
+    def setUavCurrentLocation(self,drone_id,data): # Change to correct waypoint type as responded
+        if self.position_publish_limit_counter == 0: # Limit to 1 hz
+            set_uav_current_location = 'https://www.techgen.dk/AED/admin/set_drone_current_position.php'
+            payload = {'drone_id': drone_id, 'lat': data.latitude, 'lng': data.longitude}
+            r = requests.post(url = set_uav_current_location,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            print 'setCurrentLocation result: ', r.text
+        self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 100
+
+    def setRequestDroneIdEta(self,drone_id,eta):
+        set_id_and_eta_url = 'https://www.techgen.dk/AED/admin/set_request_drone_eta.php'
+        payload = {'request_id': self.request_id, 'drone_id': drone_id, 'eta': eta}
+        r = requests.post(url = set_id_and_eta_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        print 'Set drone id and eta'
