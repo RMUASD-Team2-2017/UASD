@@ -88,6 +88,7 @@ class GCS_CONTROL_CLASS
 		int last_waypoint = 0;
 		int number_of_waypoints = 0;
 		gcs::dockData dock_sensor_data;
+		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -201,9 +202,12 @@ void GCS_CONTROL_CLASS::run()
 				// if weather ok, open docking station
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
 				{
-					// TODO give more information on check failure
 					gcs::preFlight pre_flight_msg;
-					if ( pre_flight_service_client.call(pre_flight_msg) && pre_flight_msg.response.result == true)
+					bool pfcheck = pre_flight_service_client.call(pre_flight_msg);
+					outside_temperature = pre_flight_msg.response.temperature;
+					outside_humidity = pre_flight_msg.response.humidity;
+					wind_speed = pre_flight_msg.response.windSpeed;
+					if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;
 						ROS_INFO("WAIT_FOR_READY");
