@@ -19,7 +19,7 @@
         while ($row = mysqli_fetch_assoc($result)) {
             $combinedArray[] = $row;
         }
-        echo json_encode($combinedArray); // Add "JSON_FORCE_OBJECT" if there shuld be identifiers but note these are "0" ... "max_num"
+        echo json_encode($combinedArray, JSON_FORCE_OBJECT); // Add "JSON_FORCE_OBJECT" if there shuld be identifiers but note these are "0" ... "max_num"
     } else {
         echo json_encode(0);
     }

@@ -51,7 +51,7 @@
         } else {
             echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
         }
-        echo '<td><a href="https://www.techgen.dk/AED/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";
     }
     echo "</tbody>
