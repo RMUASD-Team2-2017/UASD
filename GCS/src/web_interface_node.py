@@ -22,7 +22,7 @@ def setUavStateCallback(data):
 def setUavCurrentLocationCallback(data):
     drone_id = 1
     interface.setUavCurrentLocation(drone_id,data)
-def test():
+def main():
     ### Setup interface ###
     #interface = web_interface.web_interface()
     #interface.setAuthentication('uasd','halogenlampe')
@@ -51,7 +51,7 @@ def test():
 
 if __name__ == '__main__':
     try:
-        test()
+        main()
     except rospy.ROSInterruptException: #Catches expctions to e.g. shutdown
         print 'Got exception'
         pass
