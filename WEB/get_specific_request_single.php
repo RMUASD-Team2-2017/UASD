@@ -25,6 +25,7 @@
                 if ($first_row == 1) {
                         $accuracy = $row['loc_accuracy'];
                         $first_row = 0;
+                        $best_row = $row;
                 } else {
                     if ($row['loc_accuracy'] <= $accuracy) {
                         $accuracy = $row['loc_accuracy'];
