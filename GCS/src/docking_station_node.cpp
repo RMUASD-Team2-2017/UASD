@@ -25,8 +25,6 @@ class DOCKING_STATION_CLASS
         float getHumidity();
         bool openDockingStation();
 
-        // TODO Implement service monitorDock()
-
 };
 
 DOCKING_STATION_CLASS::DOCKING_STATION_CLASS(ros::NodeHandle *nh)

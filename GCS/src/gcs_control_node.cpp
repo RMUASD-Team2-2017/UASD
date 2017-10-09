@@ -96,7 +96,6 @@ class GCS_CONTROL_CLASS
 
 	// 2 Receive distress call from database
 	// - Http get GPS position and timestamp from database
-	// TODO
 
 	// 3 Initiate pre-flight check
 	// - Call service preflight() from pre_flight_node
@@ -107,18 +106,15 @@ class GCS_CONTROL_CLASS
 	// 5 Open docking station
 	// - Call service openDock() from docking_station_node
 
-
 	// 6 Upload path to drone and initiate flight
 	// - Call service uploadWaypoints() from drone_communication_node
 
 	// 7 Monitor the flight (Error procedure)
 	// - Call service monitorFlight() from drone_communication_node subscribing to mavlink/from
 	// - In case of extended link loss, do something
-	// TODO
 
 	// 8 Update database
 	// - Http post flight information (heartbeat, battery voltage, etc.) to database
-	// TODO
 
 };
 
