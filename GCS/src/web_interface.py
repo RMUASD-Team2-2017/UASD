@@ -29,7 +29,12 @@ class web_interface:
         alt = 0.0
         ### Get all requests ###
         payload = {'show_uncompleted': 1}
-        r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        r = ''
+        try:
+            r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        except:
+            print 'Unexpected error in polling get_requests'
+            return (-5, lat, lng, alt)
         #print "The request status is", r.status_code
         if r.text == '0' or int(r.status_code) != 200: # Handle empty response
             return (-1, lat, lng, alt)
@@ -48,7 +53,12 @@ class web_interface:
         ### Get the position of an active request ###
         if(self.active):
             payload = {'request_id': self.request_id}
-            r_specific = requests.post(url = get_specific_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            r_specific = ''
+            try:
+                r_specific = requests.post(url = get_specific_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            except:
+                print 'Unexpected error in polling get_specific_request'
+                return (-6, lat, lng, alt)
             print "The position status is", r.status_code
             if r_specific.text == 'null' or r_specific.text == '0' or int(r.status_code) != 200:
                 return (-3, lat, lng, alt)
@@ -76,9 +86,18 @@ class web_interface:
         return (self.update_count, lat, lng, alt)
 
     def setMissionDone(self,data):
+        # UNCOMMENT THIS TO TEST. IT WILL ALLOW TO COMPLETE MORE MISSIONS WITHOUT RESTART OF THIS NODE
+        # It may send a deploy request immideately before the mission is marked complete.
+        #self.active = False
+        #self.update_count = -1
         payload = { 'request_id': self.request_id , 'completed': '1'}
         set_mission_done_url = 'https://www.techgen.dk/AED/admin/set_request_completed.php'
-        r = requests.post(url = set_mission_done_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        r = ''
+        try:
+            r = requests.post(url = set_mission_done_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        except:
+            print 'Unexpected error in set_mission_done'
+            return -7
         print '#################################################################################'
         print self.username, self.password
         print self.request_id
@@ -95,13 +114,23 @@ class web_interface:
             i=i+1
         weather_string = 'Great, great weather!'
         payload = { 'drone_id': drone_id, 'cur_lat': data.cur_position.lat, 'cur_lng': data.cur_position.lon, 'target_lat': data.target_position.lat, 'target_lng': data.target_position.lon, 'path': path_string, 'weather': data.weather.data}
-        r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        r = ''
+        try:
+            r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        except:
+            print 'Unexpected error in polling set_preflight_data'
+            return -8
         #print 'Preflight', r.text
 
     def setUavState(self,drone_id,state): #Check this
         set_uav_state_url = 'https://www.techgen.dk/AED/admin/set_drone_state.php'
         payload = {'drone_id': drone_id, 'state': state}
-        r = requests.post(url = set_uav_state_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        r = ''
+        try:
+            r = requests.post(url = set_uav_state_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        except:
+            print 'Unexpected error in polling set_uav_state'
+            return -9
         #print 'setUavState', r.text
         if state == 'transport':
             drone_id = 1
@@ -112,12 +141,23 @@ class web_interface:
         if self.position_publish_limit_counter == 0: # Limit to 1 hz
             set_uav_current_location = 'https://www.techgen.dk/AED/admin/set_drone_current_position.php'
             payload = {'drone_id': drone_id, 'lat': data.latitude, 'lng': data.longitude}
-            r = requests.post(url = set_uav_current_location,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            r = ''
+            try:
+                r = requests.post(url = set_uav_current_location,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            except:
+                print 'Unexpected in set_uav_current_location'
+                return -10
             print 'setCurrentLocation result: ', r.text
-        self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 100
+        # Count up but limit. Input: 20 Hz. WIth % 10 -> output: 2 Hz
+        self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 10
 
     def setRequestDroneIdEta(self,drone_id,eta):
         set_id_and_eta_url = 'https://www.techgen.dk/AED/admin/set_request_drone_eta.php'
         payload = {'request_id': self.request_id, 'drone_id': drone_id, 'eta': eta}
-        r = requests.post(url = set_id_and_eta_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        r = ''
+        try:
+            r = requests.post(url = set_id_and_eta_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+        except:
+            print 'Unexpected error in polling get_requests'
+            return -11
         print 'Set drone id and eta'
