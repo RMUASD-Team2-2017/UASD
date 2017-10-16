@@ -11,10 +11,13 @@
 
     echo '<!DOCTYPE html>
     <html>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="table.css">
+        <head>
+            <link rel="stylesheet" href="style.css">
+            <link rel="stylesheet" href="table.css">
+        </head>
     <body>
     <div class="centerDiv">
+    <center><a href="../">Request AED</a> - <b>Drones</b> - <a href="show_requests.php">Requests</a></center>
     <center><h1>AED UAVs</h1></center>';
 
     echo '<table class="customTableClass">

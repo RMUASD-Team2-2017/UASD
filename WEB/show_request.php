@@ -14,10 +14,13 @@
 
         echo '<!DOCTYPE html>
         <html>
-        <link rel="stylesheet" href="style.css">
-        <link rel="stylesheet" href="table.css">
+            <head>
+                <link rel="stylesheet" href="style.css">
+                <link rel="stylesheet" href="table.css">
+            </head>
         <body>
         <div class="centerDiv">
+        <center><a href="show_requests.php">⬑ Go Back</a></center>
         <center><h1>AED Request</h1><br /><h2>Request id: '.$request_id.'</h2></center>';
 
         if (mysqli_num_rows($result) != 0) {

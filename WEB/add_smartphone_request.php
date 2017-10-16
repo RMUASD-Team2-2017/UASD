@@ -36,7 +36,7 @@
 
         if ($GPS_timestamp == $request_id) {
             // Check if it is completely new information / a new request
-            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '');";
+            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`, `approved`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '', '0');";
             $result = mysqli_query($con, $sql);          //query
         } else {
             // See if a drone has been dispatched
@@ -51,7 +51,11 @@
                     //$result = mysqli_query($con, $sql);          //query
                     //$array = mysqli_fetch_row($result);          //fetch result
                     //$drone_state = $array[6]; // Drone state
-                $drone_state = "dispatched";
+                if ($array[6] == 'landed') {
+                    $drone_state = "landed";
+                } else {
+                    $drone_state = "dispatched";
+                }
             }
         }
 
