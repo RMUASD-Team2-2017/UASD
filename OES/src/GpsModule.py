@@ -21,7 +21,8 @@ class StoppableThread(threading.Thread):
             # block calling thread until thread really has terminated
             self.join()
 
-class gpsModule(StoppableThread):
+
+class GpsModule(StoppableThread):
     def __init__(self,port,baud):
         StoppableThread.__init__(self)
         self.port = port
@@ -32,6 +33,7 @@ class gpsModule(StoppableThread):
         self.fix = None
         self.DOP = None
         self.number_of_satellites = None
+        self.position_lock = threading.Lock()
 
 
     #  GGA          Global Positioning System Fix Data
@@ -67,18 +69,19 @@ class gpsModule(StoppableThread):
     #  2.1      Vertical dilution of precision (VDOP)
     #  *39      the checksum data, always begins with *
 
-
     def run(self):
         # Setup serial connection
         serial_connection = serial.Serial(self.port,self.baud)
 
         # Setup rabbitmq
-        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        # TODO: Change credentials for production setup
+        credentials = pika.credentials.PlainCredentials('guest', 'guest')
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost',credentials=credentials))
         channel = connection.channel()
         # Durable: Queue will be stored on disk in case of crash, messages must have delivery mode 2 (persistent)
         channel.queue_declare(queue='externalGps',durable=True)
 
-        while ( self.stop_event.is_set() == False ):
+        while self.stop_event.is_set() is False:
             # Blocking read a line
             line = serial_connection.readline()
             # Remove new line
@@ -90,11 +93,12 @@ class gpsModule(StoppableThread):
 
             if nmea.sentence_type == 'GGA':
                 if nmea.is_valid:
-                    #print nmea
-                    self.position = {'lat': nmea.latitude, 'lng': nmea.longitude, 'alt': nmea.altitude}
-                    self.position_time =  datetime.datetime.now()
-                    #Publish the position
-                    message = {'position': self.position, 'fix_type': self.fix, 'DOP': self.DOP, 'satellites': self.number_of_satellites}
+                    print nmea
+                    with self.position_lock:
+                        self.position = {'lat': nmea.latitude, 'lng': nmea.longitude, 'alt': nmea.altitude}
+                        self.position_time = time.time()
+                        #Publish the position
+                        message = {'timestamp': self.position_time, 'position': self.position, 'fix_type': self.fix, 'DOP': self.DOP, 'satellites': self.number_of_satellites}
 
                     channel.basic_publish(exchange='', \
                         routing_key='externalGps', \
@@ -116,21 +120,26 @@ class gpsModule(StoppableThread):
                     for i in range(2,14):
                         if str(nmea.data[i]):
                             count += 1
-                    self.number_of_satellites = count
-                    self.fix = int(nmea.data[1])
-                    self.DOP = {'PDOP': nmea.data[14],'HDOP': nmea.data[15], 'VDOP': nmea.data[16]}
-                    logging.debug('GSA ok')
-                    logging.info('GSA - Satellites: %i, Fix: %i', self.number_of_satellites, self.fix)
+                    with self.position_lock:
+                        self.number_of_satellites = count
+                        self.fix = int(nmea.data[1])
+                        self.DOP = {'PDOP': nmea.data[14],'HDOP': nmea.data[15], 'VDOP': nmea.data[16]}
+                        logging.debug('GSA ok')
+                        logging.info('GSA - Satellites: %i, Fix: %i', self.number_of_satellites, self.fix)
                 else:
                     logging.warning('GSA not valid')
 
         print 'Exiting loop'
         connection.close()
 
+    def get_position(self):
+        with self.position_lock:
+            return {'timestamp': self.position_time, 'position': self.position, 'fix_type': self.fix, 'DOP': self.DOP, 'satellites': self.number_of_satellites}
+
 
 def main():
     logging.getLogger().setLevel('DEBUG')
-    gps = gpsModule(sys.argv[1],sys.argv[2])
+    gps = GpsModule(sys.argv[1],sys.argv[2])
     gps.start()
     do_exit = False
     while do_exit == False:
