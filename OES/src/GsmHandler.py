@@ -76,7 +76,7 @@ class GsmTalker(StoppableThread):
         self.transmit_queue = transmit_queue
         self.heartbeat_rate = heartbeat_rate
         self.heartbeat_timer = None
-        
+
         parameters = pika.URLParameters(pika_connection_string)
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()

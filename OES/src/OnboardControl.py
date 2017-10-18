@@ -92,19 +92,25 @@ class OnboardControl(StoppableThread):
                     self.terminate_activated = True # We can never enter this again
                     self.drone_handler.terminate_flight()
             elif self.check_states(self.action_list_land_here):
-                if not self.land_here_activated:
+                if not self.land_here_activated and \
+                   not self.terminate_activated:
                     logger.info('Action: Land here')
                     self.stop_wait_here_timer()
                     self.land_here_activated = True # We can never enter this again
                     self.drone_handler.land_at_current_location()
             elif self.check_states(self.action_list_return_to_launch):
-                if not self.return_to_launch_activated:
+                if not self.return_to_launch_activated and \
+                   not self.terminate_activated and \
+                   not self.land_here_activated:
                     logger.info('Action: Return to launch')
                     self.stop_wait_here_timer()
                     self.return_to_launch_activated = True # We can never enter this again
                     self.drone_handler.return_to_launch()
             elif self.check_states(self.action_list_wait_here):
-                if not self.wait_here_activated:
+                if not self.wait_here_activated and \
+                   not self.terminate_activated and \
+                   not self.land_here_activated and \
+                   not self.land_here_activated:
                     logger.info('Action: Wait here')
                     self.wait_here_activated = True
                     self.drone_handler.loiter()
