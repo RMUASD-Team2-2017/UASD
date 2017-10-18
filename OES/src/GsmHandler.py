@@ -72,14 +72,15 @@ class GsmReceiver(StoppableThread):
 class GsmTalker(StoppableThread):
     def __init__(self, pika_connection_string, transmit_queue, topic='/toGcs', heartbeat_rate=1.0):
         StoppableThread.__init__(self)
-        parameters = pika.URLParameters(pika_connection_string)
-        self.connection = pika.BlockingConnection(parameters)
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue='externalGps')
         self.topic = topic
         self.transmit_queue = transmit_queue
         self.heartbeat_rate = heartbeat_rate
         self.heartbeat_timer = None
+        
+        parameters = pika.URLParameters(pika_connection_string)
+        self.connection = pika.BlockingConnection(parameters)
+        self.channel = self.connection.channel()
+        self.channel.queue_declare(queue=self.topic)
 
     def run(self):
         # Start transmitting a heartbeat
