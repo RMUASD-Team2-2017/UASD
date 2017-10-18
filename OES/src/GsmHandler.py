@@ -119,11 +119,11 @@ def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     logger.info('test')
-    command_queue = Queue()
+    gsm_command_queue = Queue()
     gsm_transmit_queue = Queue()
     # Pika is not thread safe so we just pass the connection string and not a connection
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    receiver = GsmReceiver(pika_connection_string,command_queue)
+    receiver = GsmReceiver(pika_connection_string,gsm_command_queue)
     receiver.start()
     talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
     talker.start()
