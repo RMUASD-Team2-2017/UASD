@@ -3,11 +3,12 @@ import serial
 import threading
 import sys
 import time
-import Queue
 import logging
-import datetime
 import pika
 import json
+
+logger = logging.getLogger(__name__)
+
 
 class StoppableThread(threading.Thread):
     def __init__(self):
@@ -25,6 +26,7 @@ class StoppableThread(threading.Thread):
 class GpsModule(StoppableThread):
     def __init__(self,port,baud):
         StoppableThread.__init__(self)
+        self.name = 'GpsModule'
         self.port = port
         self.baud = baud
         self.daemon = True
@@ -80,7 +82,7 @@ class GpsModule(StoppableThread):
         channel = connection.channel()
         # Durable: Queue will be stored on disk in case of crash, messages must have delivery mode 2 (persistent)
         channel.queue_declare(queue='externalGps',durable=True)
-
+        logger.info('GpsModule started')
         while self.stop_event.is_set() is False:
             # Blocking read a line
             line = serial_connection.readline()
@@ -93,7 +95,7 @@ class GpsModule(StoppableThread):
 
             if nmea.sentence_type == 'GGA':
                 if nmea.is_valid:
-                    print nmea
+                    #print nmea
                     with self.position_lock:
                         self.position = {'lat': nmea.latitude, 'lng': nmea.longitude, 'alt': nmea.altitude}
                         self.position_time = time.time()
@@ -106,13 +108,13 @@ class GpsModule(StoppableThread):
                         properties=pika.BasicProperties( \
                         delivery_mode = 2,))
 
-                    logging.debug('GGA ok')
+                    logger.debug('GGA ok')
                 else:
-                    logging.warning('GGA not valid')
+                    logger.warning('GGA not valid')
                 # Do something with the data
             elif nmea.sentence_type ==  'GSA':
                 if nmea.is_valid:
-                    print nmea
+                    #print nmea
                     # Count satellites. Each satellites has a PRN in index 2-13
                     # 2-13 are  PRN (a code which each represent one satellite)
                     count = 0
@@ -124,12 +126,12 @@ class GpsModule(StoppableThread):
                         self.number_of_satellites = count
                         self.fix = int(nmea.data[1])
                         self.DOP = {'PDOP': nmea.data[14],'HDOP': nmea.data[15], 'VDOP': nmea.data[16]}
-                        logging.debug('GSA ok')
-                        logging.info('GSA - Satellites: %i, Fix: %i', self.number_of_satellites, self.fix)
+                        logger.debug('GSA ok')
+                        logger.info('GSA - Satellites: %i, Fix: %i', self.number_of_satellites, self.fix)
                 else:
-                    logging.warning('GSA not valid')
+                    logger.warning('GSA not valid')
 
-        print 'Exiting loop'
+        logger.info('GpsModule terminating')
         connection.close()
 
     def get_position(self):
@@ -138,7 +140,6 @@ class GpsModule(StoppableThread):
 
 
 def main():
-    logging.getLogger().setLevel('DEBUG')
     gps = GpsModule(sys.argv[1],sys.argv[2])
     gps.start()
     do_exit = False

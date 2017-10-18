@@ -10,7 +10,7 @@ from OnboardControl import OnboardControl
 from Queue import Queue
 
 
-### Global queues ####
+## Global queues ###
 external_gps_queue = Queue()
 internal_gps_queue = Queue()
 gsm_queue = Queue()
@@ -36,6 +36,7 @@ class PikaHandler(StoppableThread):
         self.daemon = False
         self.pika_queue = pika_queue
         self.internal_queue = internal_queue
+
     def run(self):
         ### Setup rabbitmq ###
         # TODO: Change credentials for production version
@@ -77,69 +78,27 @@ class PikaHandler(StoppableThread):
         ch.basic_ack(delivery_tag = method.delivery_tag)
 
 
-
-class ControlLogic:
-    ### State variables ###
-    # gps_state
-    GPS_OK = 0
-    GPS_MISMATCH = 1
-    GPS_TIMEOUT = 2
-    GPS_FIX_LOST = 3
-
-    # Values in seconds
-    FIX_LOST_TIMEOUT = 10
-
-    def __init__(self):
-        self.gps_state = GPS_OK
-        self.external_gps_position = None
-        self.internal_gps_position = None
-
-    def gps_monitor(self):
-        # Update position
-        updated = 0
-        while not external_gps_queue.empty:
-            self.external_gps_position = external_gps_queue.get()
-            updated += 1
-        while not internal_gps_queue.empty:
-            self.internal_gps_position = internal_gps_queue.get()
-            updated += 1
-
-        # If position is updated, calculate distance
-        if updated > 0:
-            pass
-
-        positions = [self.external_gps_position,self.internal_gps_position]
-        current_time = time.time()
-        for position in positions:
-            if current_time-self.external_gps_position['timestamp'] > ControlLogic.FIX_LOST_TIMEOUT:
-                # Signal land at current location
-                continue
-
-
-    def gsm_monitor(self):
-        pass
-    def controller(self):
-        pass
-
-def dummy_signal(signal,source):
+def dummy_signal(signal,source=''):
     print 'Got signal:', signal, 'with source:', source
 
-def dummy_signal(signal):
-    print 'Got signal:', signal
 
 def dummy_internal_gps():
     return None
 
+
 def main():
-    logging.getLogger('test').setLevel('INFO')
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.info('test')
     #external_gps_handler = PikaHandler('externalGps',external_gps_queue)
     #external_gps_handler.start()
+    drone_handler_signal_queue = Queue()
     external_gps_module = GpsModule('/dev/ttyACM0',9600)
     external_gps_module.start()
-    drone_handler = DroneHandler('127.0.0.1:14540',115200,dummy_signal)
-    gps_monitor = GpsMonitor(dummy_signal,external_gps_module.get_position,drone_handler.get_position)
+    drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
+    onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, rate = 2)
+    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position)
     gps_monitor.start()
-    onboard_control = OnboardControl(drone_handler,rate = 2)
     onboard_control.start()
     do_exit = False
     while do_exit == False:
@@ -151,6 +110,9 @@ def main():
 
     external_gps_module.stop()
     gps_monitor.stop()
+    onboard_control.stop()
+    drone_handler.close()
+    print threading.enumerate()
 
 if __name__ == "__main__":
     main()

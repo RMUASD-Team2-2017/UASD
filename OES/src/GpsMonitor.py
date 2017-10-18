@@ -5,6 +5,7 @@ import logging
 import json
 from math import sqrt
 
+logger = logging.getLogger(__name__)
 
 class StoppableThread(threading.Thread):
     def __init__(self):
@@ -34,14 +35,15 @@ class GpsMonitor(StoppableThread):
 
     def __init__(self, signal_function, get_external_pos, get_internal_pos, rate = 1):
         StoppableThread.__init__(self)
+        self.name = 'GpsMonitor'
         self.signal = signal_function
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
         self.rate = rate
     def run(self):
-        logging.info('GpsMonitor started')
+        logger.info('GpsMonitor started')
         time.sleep(30) # Allow the gps' to get a fix
-        logging.info('GpsMonitor enforced')
+        logger.info('GpsMonitor enforced')
         while self.stop_event.is_set() is False:
             external_pos = self.get_external_pos()
             internal_pos = self.get_internal_pos()
@@ -51,8 +53,8 @@ class GpsMonitor(StoppableThread):
                 self.signal(GpsMonitor.STATE_NO_FIX_YET)
                 time.sleep(float(1) / float(self.rate))
                 continue
-            print json.dumps(external_pos)
-            print json.dumps(internal_pos)
+            #print json.dumps(external_pos)
+            #print json.dumps(internal_pos)
             external_state = self.check_timestamp(external_pos)
             internal_state = self.check_timestamp(internal_pos)
 
@@ -77,6 +79,7 @@ class GpsMonitor(StoppableThread):
 
             # Sleep to obtain desired frequency
             time.sleep(float(1)/float(self.rate))
+        logger.info('Terminating')
 
     def check_timestamp(self, position):
         current_time = time.time()

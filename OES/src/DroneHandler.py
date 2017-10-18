@@ -1,9 +1,12 @@
 import threading
 import time
+import logging
 from dronekit import connect, VehicleMode, Command, LocationGlobal
 from pymavlink import mavutil
 
 forever = 60*60*24*365*100
+
+logger = logging.getLogger(__name__)
 
 #class StoppableThread(threading.Thread):
 #    def __init__(self):
@@ -17,11 +20,12 @@ forever = 60*60*24*365*100
 #            # block calling thread until thread really has terminated
 #            self.join()
 
+
 class DroneHandler():
 
     STATE_OK = 'HEARTBEAT_OK'
     STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
-    def __init__(self,port,baud,signal_func):
+    def __init__(self,port,baud,signal_queue):
         # TODO: Add baud= for a real drone
         # Connect to the drone
         #   Try to reconnect forever (100 years)
@@ -33,7 +37,9 @@ class DroneHandler():
         #   Ref: https://groups.google.com/forum/#!msg/drones-discuss/PvgF7AiYLmI/sw4BuglTHAAJ
         self.lock = threading.Lock()
         self.vehicle.class_access_hack = self # Inspired by group 1. Hack to access class from decorator callbacks
-        self.signal = signal_func
+        self.signal = signal_queue
+
+        logger.info('DroneHandler started')
 
         @self.vehicle.on_message('GPS_RAW_INT')
         def listener(self, name, message):
@@ -57,7 +63,7 @@ class DroneHandler():
         @self.vehicle.on_message('HEARTBEAT')
         def listener(self, name, message):
             with self.class_access_hack.lock:
-                self.class_access_hack.signal(time.time())
+                self.class_access_hack.signal.put(time.time())
 
     def get_position(self):
             with self.lock:
@@ -84,3 +90,6 @@ class DroneHandler():
         with self.lock:
             self.vehicle.mode = VehicleMode("MISSION")
 
+    def close(self):
+        self.vehicle.close()
+        logger.info('DroneHandler terminating')
