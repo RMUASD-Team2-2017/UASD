@@ -2,10 +2,10 @@ import threading
 import time
 import utm
 import logging
-import json
 from math import sqrt
 
 logger = logging.getLogger(__name__)
+
 
 class StoppableThread(threading.Thread):
     def __init__(self):
@@ -25,9 +25,9 @@ class GpsMonitor(StoppableThread):
     STATE_OK = 'GPS_OK'
     STATE_TIMEOUT = 'GPS_TIMEOUT'
     STATE_LOST = 'GPS_LOST'
+    STATE_LOST_BOTH = 'GPS_LOST_BOTH'
     STATE_MISMATCH = 'GPS_MISMATCH'
     STATE_NO_FIX_YET = 'GPS_NO_FIX_YET'
-
 
     TIMEOUT_VALUE = 3
     LOST_TIME_VALUE = 10
@@ -40,6 +40,7 @@ class GpsMonitor(StoppableThread):
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
         self.rate = rate
+
     def run(self):
         logger.info('GpsMonitor started')
         time.sleep(30) # Allow the gps' to get a fix
@@ -49,7 +50,7 @@ class GpsMonitor(StoppableThread):
             internal_pos = self.get_internal_pos()
 
             # Check if a fix is obtained
-            if external_pos == None or internal_pos == None:
+            if external_pos is None or internal_pos is None:
                 self.signal(GpsMonitor.STATE_NO_FIX_YET)
                 time.sleep(float(1) / float(self.rate))
                 continue
@@ -58,9 +59,10 @@ class GpsMonitor(StoppableThread):
             external_state = self.check_timestamp(external_pos)
             internal_state = self.check_timestamp(internal_pos)
 
-            # Check if GPS is lost or missing for an acceptable amout of seconds (timeout)
+            # Check if GPS is lost or missing for an acceptable amount of seconds (timeout)
             if external_state == GpsMonitor.STATE_LOST or internal_state == GpsMonitor.STATE_LOST:
                 source = self.find_source(GpsMonitor.STATE_LOST,external_state,internal_state)
+                # If necessary check for source here and send a GpsMonitor.STATE_LOST_BOTH if deemed necessary
                 self.signal(GpsMonitor.STATE_LOST,source)
             elif external_state == GpsMonitor.STATE_TIMEOUT or internal_state == GpsMonitor.STATE_TIMEOUT:
                 source = self.find_source(GpsMonitor.STATE_TIMEOUT,external_state,internal_state)
