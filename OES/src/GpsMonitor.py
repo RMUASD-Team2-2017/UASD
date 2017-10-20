@@ -102,3 +102,107 @@ class GpsMonitor(StoppableThread):
             source = 'INTERNAL'
         return source
 
+
+class Geofence:
+    def __init__(self,fence, obstacles=None, maxHeight=100.0):
+        self.fence = fence
+        self.obstacles = obstacles
+        self.maxHeight = float(maxHeight)
+
+    def is_point_legal(self, point3d):
+        x = point3d[0]
+        y = point3d[1]
+        altitude = point3d[2]
+
+        # Are we above maximal height
+        if(altitude > self.maxHeight):
+            return False
+
+        # Are we inside the fence
+        point2d = (x, y)
+        if self.inside_fence(point2d):
+            if not self.inside_obstacle(point2d,altitude):
+                return True
+
+        return False
+
+    def inside_fence(self, point2d):
+        return bool(self.cn_PnPoly(point2d, self.fence))
+
+    def inside_obstacle(self,point2d,altitude):
+
+        # We cannot be inside an obstacle if there are none
+        if self.obstacles is None:
+            print 'No obstacles'
+            return False
+
+        print 'Obstacles', len(self.obstacles)
+        # Check all obstacles
+        for obstacle in self.obstacles:
+            print 'Obstacle test'
+            print obstacle.points
+            print obstacle.height
+            print point2d
+            if self.cn_PnPoly(point2d,obstacle.points):
+                print 'Inside 2d obstacle'
+                # We might be inside an obstacle
+                if altitude < obstacle.height:
+                    print 'Inside 3d obstacle'
+                    return True
+
+        return False
+
+
+
+    # cn_PnPoly(): crossing number test for a point in a polygon
+    #     Input:  P = a point,
+    #             V[] = vertex points of a polygon
+    #     Return: 0 = outside, 1 = inside
+    # This code is patterned after [Franklin, 2000]
+    # Original copyright notice:
+    # Copyright 2001, softSurfer (www.softsurfer.com)
+    # This code may be freely used and modified for any purpose
+    # providing that this copyright notice is included with it.
+    # SoftSurfer makes no warranty for this code, and cannot be held
+    # liable for any real or imagined damage resulting from its use.
+    # Users of this code must verify correctness for their application.
+    # translated to Python by Maciej Kalisiak <mac@dgp.toronto.edu>
+    def cn_PnPoly(self, P, V):
+        cn = 0  # the crossing number counter
+
+        # repeat the first vertex at end
+        V = tuple(V[:]) + (V[0],)
+
+        # loop through all edges of the polygon
+        for i in range(len(V) - 1):  # edge from V[i] to V[i+1]
+            if ((V[i][1] <= P[1] and V[i + 1][1] > P[1])  # an upward crossing
+                or (V[i][1] > P[1] and V[i + 1][1] <= P[1])):  # a downward crossing
+                # compute the actual edge-ray intersect x-coordinate
+                vt = (P[1] - V[i][1]) / float(V[i + 1][1] - V[i][1])
+                if P[0] < V[i][0] + vt * (V[i + 1][0] - V[i][0]):  # P[0] < intersect
+                    cn += 1  # a valid crossing of y=P[1] right of P[0]
+
+        return cn % 2  # 0 if even (out), and 1 if odd (in)
+
+
+class Obstacle:
+    def __init__(self,points, height):
+        self.points = points
+        self.height = height
+
+
+def main():
+    fence_points = [(1.0,1.0), (10.0,1.0), (10.0,10.0), (1.0,10.0)]
+    obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
+    obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
+    fence = Geofence(fence_points,obstacles)
+    test_point = (5.0,5.0,5.0)
+    print fence.is_point_legal(test_point)
+
+   # print obstacle_points
+   # obstacle_fence = Geofence(obstacle_points)
+   # print obstacle_fence.is_point_legal(test_point)
+
+
+if __name__ == "__main__":
+    main()
