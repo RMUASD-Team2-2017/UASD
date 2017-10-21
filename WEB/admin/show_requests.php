@@ -15,7 +15,7 @@
         <head>
             <link rel="stylesheet" href="style.css">
             <link rel="stylesheet" href="table.css">
-             <meta http-equiv="refresh" content="'.$sec.';URL='.$page.'">
+            <meta http-equiv="refresh" content="'.$sec.';URL='.$page.'">
         </head>
     <body>
     <div class="centerDiv">
@@ -31,9 +31,7 @@
     <tr>
     <th>Request #</th>
     <th>Request ID</th>
-    <th>Assigned UAV ID</th>
     <th>Time and date</th>
-    <th>ETA</th>
     <th>Action</th>
     </tr>
     </thead>
@@ -51,18 +49,8 @@
 
         echo "<td>" . $row['int_id'] . "</td>";
         echo "<td>" . $row['request_id'] . "</td>";
-        if ($row['drone_id'] == 0) {
-            echo "<td>None</td>";
-        } else {
-            echo "<td>" . $row['drone_id'] . "</td>";
-        }
         echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        if ($row['eta'] == 0) {
-            echo "<td>None</td>";
-        } else {
-            echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
-        }
-        echo '<td><a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '">Approve</a> - <a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '">Reject</a> - <a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo '<td><a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '&page=show_requests.php' .'">Approve</a> - <a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '&page=show_requests.php' . '">Reject</a> - <a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";
     }
     echo "</tbody>
@@ -119,7 +107,6 @@
     <th>Request ID</th>
     <th>Assigned UAV ID</th>
     <th>Time and date</th>
-    <th>ETA</th>
     <th>Action</th>
     </tr>
     </thead>
@@ -137,11 +124,6 @@
             echo "<td>" . $row['drone_id'] . "</td>";
         }
         echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        if ($row['eta'] == 0) {
-            echo "<td>None</td>";
-        } else {
-            echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
-        }
         echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";
     }
@@ -158,9 +140,7 @@
     <tr>
     <th>Request #</th>
     <th>Request ID</th>
-    <th>Assigned UAV ID</th>
     <th>Time and date</th>
-    <th>ETA</th>
     <th>Action</th>
     </tr>
     </thead>
@@ -168,21 +148,11 @@
 
     while($row = mysqli_fetch_array($result))
     {
-        echo '<tr style="background-color: #A9A9A9;">';
+        echo '<tr style="background-color: #CCCCCC;">';
 
         echo "<td>" . $row['int_id'] . "</td>";
         echo "<td>" . $row['request_id'] . "</td>";
-        if ($row['drone_id'] == 0) {
-            echo "<td>None</td>";
-        } else {
-            echo "<td>" . $row['drone_id'] . "</td>";
-        }
         echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        if ($row['eta'] == 0) {
-            echo "<td>None</td>";
-        } else {
-            echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
-        }
         echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
         echo "</tr>";
     }
@@ -190,7 +160,7 @@
     </table>";
 
     echo '<br />';
-    echo 'Updated: '.date('Y-m-d H:i:s', time());
+    echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';
     echo '</div>
     </body>
     </html>';

@@ -9,12 +9,18 @@
 
     $request_id = $_GET['id'];
     if (isset($_GET['id'])) {
-        $sql = "UPDATE `AED_requests` SET `approved` = '$time'  WHERE `request_id` = '$request_id'";
+        $sql = "UPDATE `AED_requests` SET `approved` =2  WHERE `request_id` = '$request_id'";
         $result = mysqli_query($con, $sql);          //query
     }
 
     mysqli_close($con);
 
-    header("Location: show_requests.php");
+    $page = $_GET['page'];
+    if ($page == 'show_request.php') {
+        header("Location: ".$page."?id=".$request_id);
+    } else {
+        header("Location: ".$page);
+    }
+
     die();
 ?>
