@@ -24,11 +24,12 @@ class OnboardControl(StoppableThread):
     CONNECTION_LOST = 'CONNECTION_LOST'
     CONNECTION_OK = 'CONNECTION_OK'
 
-    def __init__(self,drone_handler, drone_handler_signal_queue,rate = 1):
+    def __init__(self,drone_handler, drone_handler_signal_queue, gsm_transmit_queue, rate = 1):
         StoppableThread.__init__(self)
         self.name = 'OnboardControl'
         self.rate = float(rate)
         self.drone_handler = drone_handler
+        self.gsm_transmit_queue = gsm_transmit_queue
         self.signal_gps_lock = threading.Lock()
         self.signal_drone_heartbeat_lock = threading.Lock()
         self.signal_gsm_lock = threading.Lock()

@@ -52,7 +52,7 @@ def main():
     external_gps_module = GpsModule('/dev/ttyACM0',9600)
     external_gps_module.start()
     drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
-    onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, rate = 1)
+    onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, rate = 1)
     gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position)
     gps_monitor.start()
 
@@ -60,20 +60,20 @@ def main():
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsm_listener = GsmReceiver(pika_connection_string,gsm_command_queue)
     gsm_listener.start()
-    gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
-    gsm_talker.start()
+    #gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
+    #gsm_talker.start()
 
     # To drone sniffer
-    to_drone_sniff_port = '/dev/ttyUSB0'
-    sniff_to_drone = MavlinkListener(to_drone_sniff_port,baud=57600)
-    sniff_to_drone.start()
+    #to_drone_sniff_port = '/dev/ttyUSB0'
+    #sniff_to_drone = MavlinkListener(to_drone_sniff_port,baud=57600)
+    #sniff_to_drone.start()
 
     # ConnectionMonitor
-    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
-                                           gsm_listener.get_heartbeat)
-
-    #connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, gsm_listener.get_heartbeat,
+    #connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
     #                                       gsm_listener.get_heartbeat)
+
+    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, dummy_get_heartbeat,
+                                           gsm_listener.get_heartbeat)
 
     connection_monitor.start()
 
@@ -93,8 +93,8 @@ def main():
     onboard_control.stop()
     drone_handler.close()
     gsm_listener.stop()
-    gsm_talker.stop()
-    sniff_to_drone.stop()
+    #gsm_talker.stop()
+    #sniff_to_drone.stop()
     connection_monitor.stop()
     print threading.enumerate()
     logger.info('OES terminated')

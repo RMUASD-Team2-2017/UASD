@@ -64,10 +64,15 @@ class DroneHandler():
         def listener(self, name, message):
             with self.class_access_hack.lock:
                 self.class_access_hack.signal.put(time.time())
+                self.class_access_hack.last_heartbeat = time.time()
 
     def get_position(self):
-            with self.lock:
-                return self.position
+        with self.lock:
+            return self.position
+
+    def get_heartbeat(self):
+        with self.lock:
+            return self.last_heartbeat
 
     def terminate_flight(self):
         with self.lock:

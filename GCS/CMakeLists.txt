@@ -64,6 +64,7 @@ add_message_files(
   waypoint.msg
   dockData.msg
   setPreflightData.msg
+  toDroneData.msg
 )
 
 ## Generate services in the 'srv' folder
