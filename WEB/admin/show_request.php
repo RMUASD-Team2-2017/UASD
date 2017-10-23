@@ -9,7 +9,7 @@
         }
 
         $page = $_SERVER['PHP_SELF'];
-        $sec = "10";
+        $sec = "5";
 
         $request_id = $_GET['id'];
 
@@ -37,36 +37,56 @@
         <center><h1>AED Request</h1><h2>Request id: '.$request_id.'</h2></center>';
 
         echo '<h2>Administrative information</h2>';
-        echo '<p>Time and date: '.$request_time.'</p>';
+        echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Time and date: <b>'.$request_time.'</b></span></p>';
 
         if ($request_approved == 0) {
-            echo '<p>Request awaiting approval (';
-            echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $request_id . '&page=show_request.php' .'">approve</a>, ';
-            echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $request_id . '&page=show_request.php' . '">reject</a>)</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting approval</span></p>';
+            echo '<p style="margin-bottom: 20px;">';
+            echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $request_id . '&page=show_request.php' .'"><span style="padding:3px; margin-left: 25px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #90EE90;">approve</span></a>';
+            echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $request_id . '&page=show_request.php' . '"><span style="padding:3px; margin-left: 5px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #FF0000;">reject</span></a>';
+            echo '</p>';
         } elseif ($request_approved == 2) {
-            echo '<p>Request rejected</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">Request rejected</span></p>';
         } else {
-            echo '<p>Request approved at '.date('Y-m-d H:i:s', strtotime($request_approved)).'</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request approved at <b>'.date('Y-m-d H:i:s', strtotime($request_approved)).'</b></span></p>';
         }
 
         if ($request_completed == 0) {
-            echo '<p>Request awaiting completion</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
+            if ($request_approved != 0 && $request_approved != 2) {
+                echo '<p style="margin-bottom: 20px;">';
+                echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'"><span style="padding:3px; margin-left: 25px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #90EE90;">complete</span></a>';
+                echo '</p>';
+            }
         } else {
-            echo '<p>Request completed at '.date('Y-m-d H:i:s', strtotime($request_completed)).'</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request completed at <b>'.date('Y-m-d H:i:s', strtotime($request_completed)).'</b></span></p>';
         }
 
         if ($request_drone == 0) {
-            echo '<p>No UAV has been assigned</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">No UAV has been assigned</span></p>';
         } else {
             $sql = "SELECT * FROM `AED_drone_list`  WHERE `id` = '$request_drone'";
             $result = mysqli_query($con, $sql);          //query
             $row = mysqli_fetch_array($result);
-            echo '<p>Assigned UAV: '.$row['name'].' - UAV ID: '.$request_drone;
-            if ($request_eta != '0') {
-                echo '<p>ETA: '.date('Y-m-d H:i:s', strtotime($request_eta)).'</p>';
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Assigned UAV: <b>'.$row['name'].'</b> - <i>UAV ID: '.$request_drone.'</i></span></p>';
+
+            if ($row['state'] == 'idle') {
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+            } elseif ($row['state'] == 'maintenance' || $row['state'] == 'error') {
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+            } elseif ($row['state'] == 'landed') {
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
             } else {
-                echo '<p>ETA: none</p>';
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
             }
+            if ($row['state'] != 'landed' && $row['state'] != 'maintenance' && $row['state'] != 'error') {
+                if ($request_eta != '0') {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">ETA: <b>'.date('Y-m-d H:i:s', strtotime($request_eta)).'</b></span></p>';
+                } else {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">ETA: none</span></p>';
+                }
+            }
+
         }
 
         $sql = "SELECT * FROM `AED_smartphone_requests`  WHERE `id` = '$request_id'";

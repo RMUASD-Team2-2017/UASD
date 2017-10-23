@@ -97,7 +97,7 @@
     </table>";
 
     /* SHOW APPROVED AND COMPLETED */
-    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 and `completed` !=0 ORDER BY  `int_id` DESC LIMIT 10";
+    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 and `completed` !=0 ORDER BY  `completed` DESC LIMIT 10";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Completed</h2>';
     echo '<table class="customTableClass">
