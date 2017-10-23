@@ -42,8 +42,8 @@
         if ($request_approved == 0) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting approval</span></p>';
             echo '<p style="margin-bottom: 20px;">';
-            echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $request_id . '&page=show_request.php' .'"><span style="padding:3px; margin-left: 25px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #90EE90;">approve</span></a>';
-            echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $request_id . '&page=show_request.php' . '"><span style="padding:3px; margin-left: 5px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #FF0000;">reject</span></a>';
+            echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">APPROVE</span></a>';
+            echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $request_id . '&page=show_request.php' . '" class="button_style"><span style="padding:5px; margin-left: 5px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">REJECT</span></a>';
             echo '</p>';
         } elseif ($request_approved == 2) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">Request rejected</span></p>';
@@ -55,19 +55,25 @@
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
             if ($request_approved != 0 && $request_approved != 2) {
                 echo '<p style="margin-bottom: 20px;">';
-                echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'"><span style="padding:3px; margin-left: 25px; margin-top: 1px; border: 1px solid #CCCCCC; background-color: #90EE90;">complete</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">COMPLETE</span></a>';
                 echo '</p>';
             }
         } else {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request completed at <b>'.date('Y-m-d H:i:s', strtotime($request_completed)).'</b></span></p>';
         }
 
+
+        $sql = "SELECT * FROM `AED_drone_list`  WHERE `id` = '$request_drone'";
+        $result = mysqli_query($con, $sql);          //query
+        $row = mysqli_fetch_array($result);
+        $drone_lat = $row['cur_lat'];
+        $drone_lng = $row['cur_lng'];
+        $gcs_lat = $row['loc_lat'];
+        $gcs_lng = $row['loc_lng'];
+
         if ($request_drone == 0) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">No UAV has been assigned</span></p>';
         } else {
-            $sql = "SELECT * FROM `AED_drone_list`  WHERE `id` = '$request_drone'";
-            $result = mysqli_query($con, $sql);          //query
-            $row = mysqli_fetch_array($result);
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Assigned UAV: <b>'.$row['name'].'</b> - <i>UAV ID: '.$request_drone.'</i></span></p>';
 
             if ($row['state'] == 'idle') {
@@ -160,41 +166,93 @@
 
         echo '<div id="googleMap" style="width:100%;height:400px;margin-top:15px;"></div>';
         echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>';
-        echo '<script>
-            var marker_human_help = \'https://www.techgen.dk/AED/marker_human_help.png\';
-            function myMap() {
-                var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
-                var myLatLng2 = new google.maps.LatLng('.$best_row['loc_lat'].', '.$best_row['loc_lng'].');
-                if (myLatLng != null) {
-                    // firstRunMap = 0;
-                    // Create a map object and specify the DOM element for display.
-                    // Similar way to exclude additional show: var map = new google.maps.Map(document.getElementById(\'map\'), {
-                    var mapProp= {
-                        //center:new google.maps.LatLng(51.508742,-0.120850),
-                        center: myLatLng,
-                        mapTypeId: \'hybrid\',
-                        zoom:16,
-                        scaleControl: false,
-                        streetViewControl: false,
-                        mapTypeControl: true,
-                    };
-                    map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
 
-                    marker_human = new google.maps.Marker({
-                      position: myLatLng,
-                      map: map,
-                      title: \'Your Position\',
-                      icon: marker_human_help,
-                      visible: true
-                    });
-                    marker_human.setMap(map);
-                    marker_human.setPosition(myLatLng); // Set marker new location
+        if ($request_approved != 0 && $request_completed == 0 && $request_drone != 0) {
+            echo '<script>
+                var marker_human_help = \'https://www.techgen.dk/AED/marker_human_help.png\';
+                var marker_aed = \'https://www.techgen.dk/AED/marker_aed.png\';
+                var marker_gcs = \'https://www.techgen.dk/AED/marker_gcs.png\';
+                function myMap() {
+                    var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
+                    var DroneLatLng = {lat: '.$drone_lat.',lng: '.$drone_lng.'};
+                    var GCSLatLng = {lat: '.$gcs_lat.',lng: '.$gcs_lng.'};
+                    var AvgLatLng = new google.maps.LatLng('. ($best_row['loc_lat']+$gcs_lat)/2 .', '. ($best_row['loc_lng']+$gcs_lng)/2 .');
+                    if (myLatLng != null) {
+                        // firstRunMap = 0;
+                        // Create a map object and specify the DOM element for display.
+                        // Similar way to exclude additional show: var map = new google.maps.Map(document.getElementById(\'map\'), {
+                        var mapProp= {
+                            //center:new google.maps.LatLng(51.508742,-0.120850),
+                            center: AvgLatLng,
+                            mapTypeId: \'hybrid\',
+                            zoom:16,
+                            scaleControl: false,
+                            streetViewControl: false,
+                            mapTypeControl: true,
+                        };
+                        map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
 
+                        marker_human = new google.maps.Marker({
+                          position: myLatLng,
+                          map: map,
+                          title: \'Your Position\',
+                          icon: marker_human_help,
+                          visible: true
+                        });
+
+                        marker_aed = new google.maps.Marker({
+                          position: DroneLatLng,
+                          map: map,
+                          title: \'AED Position\',
+                          icon: marker_aed
+                        });
+                        marker_aed = new google.maps.Marker({
+                          position: GCSLatLng,
+                          map: map,
+                          title: \'GCS Position\',
+                          icon: marker_gcs
+                        });
+
+                    }
                 }
-            }
-            </script>';
+                </script>';
+        } else {
+            echo '<script>
+                var marker_human_help = \'https://www.techgen.dk/AED/marker_human_help.png\';
+                function myMap() {
+                    var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
+                    var myLatLng2 = new google.maps.LatLng('.$best_row['loc_lat'].', '.$best_row['loc_lng'].');
+                    if (myLatLng != null) {
+                        // firstRunMap = 0;
+                        // Create a map object and specify the DOM element for display.
+                        // Similar way to exclude additional show: var map = new google.maps.Map(document.getElementById(\'map\'), {
+                        var mapProp= {
+                            //center:new google.maps.LatLng(51.508742,-0.120850),
+                            center: myLatLng,
+                            mapTypeId: \'hybrid\',
+                            zoom:16,
+                            scaleControl: false,
+                            streetViewControl: false,
+                            mapTypeControl: true,
+                        };
+                        map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
+
+                        marker_human = new google.maps.Marker({
+                          position: myLatLng,
+                          map: map,
+                          title: \'Your Position\',
+                          icon: marker_human_help,
+                          visible: true
+                        });
+                        marker_human.setMap(map);
+                        marker_human.setPosition(myLatLng); // Set marker new location
+
+                    }
+                }
+                </script>';
+        }
         echo '<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTHa8VL03UUNRQdlxNm99TaUzTsK2v6Ls&callback=myMap" async defer></script>';
-        echo '<p>The map shows the latest and best result; marked green in the table above.</p>';
+        echo '<p><i>The map shows the latest and best result; marked green in the table above.</i></p>';
 
         echo '<br />';
         echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';

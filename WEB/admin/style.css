@@ -3,3 +3,12 @@
      width: 90%;
      padding: 10px;
 }
+.button_style {
+    text-decoration: none;
+    color: #3a3a3a;
+    opacity: 0.9;
+}
+.button_style:hover {
+    color: #000000;
+    opacity: 1;
+}
