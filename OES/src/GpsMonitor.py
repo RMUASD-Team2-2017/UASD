@@ -50,12 +50,17 @@ class GpsMonitor(StoppableThread):
             internal_pos = self.get_internal_pos()
 
             # Check if a fix is obtained
-            if external_pos is None or internal_pos is None:
+            # We don't execute the checks below before we have a fix.
+            # NOTE: If we get here in flight we're in trouble as we don't check the states when we get in here
+            if external_pos is None or internal_pos is None or \
+               external_pos['timestamp'] == None \
+               or internal_pos['timestamp'] == None:
                 self.signal(GpsMonitor.STATE_NO_FIX_YET)
                 time.sleep(float(1) / float(self.rate))
                 continue
             #print json.dumps(external_pos)
             #print json.dumps(internal_pos)
+
             external_state = self.check_timestamp(external_pos)
             internal_state = self.check_timestamp(internal_pos)
 

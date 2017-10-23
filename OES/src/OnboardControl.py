@@ -2,6 +2,7 @@ import threading
 import time
 import logging
 from GpsMonitor import GpsMonitor
+from ConnectionMonitor import ConnectionMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -31,22 +32,33 @@ class OnboardControl(StoppableThread):
         self.signal_gps_lock = threading.Lock()
         self.signal_drone_heartbeat_lock = threading.Lock()
         self.signal_gsm_lock = threading.Lock()
+        self.signal_connection_state_lock = threading.Lock()
         self.gps_state = None
         self.gps_source = None
         self.drone_heartbeat = time.time()
         self.drone_connection_state = None
         self.gsm_connection_state = None
+        self.connection_state = None
 
         self.signal_queue = drone_handler_signal_queue
 
         self.action_list_terminate = []
         self.action_list_land_here = [GpsMonitor.STATE_LOST]
-        self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST]
+        self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
+                                             ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
+                                             ConnectionMonitor.STATE_CON_TELEMETRY_TIMEOUT_GSM_LOST,
+                                             ConnectionMonitor.STATE_CON_TELEMETRY_LOST_GSM_OK,
+                                             ConnectionMonitor.STATE_CON_TELEMETRY_LOST_GSM_TIMEOUT,
+                                             ConnectionMonitor.STATE_CON_TELEMETRY_LOST_GSM_LOST]
         self.action_list_wait_here = [GpsMonitor.STATE_TIMEOUT,
-                                      GpsMonitor.STATE_MISMATCH]
+                                      GpsMonitor.STATE_MISMATCH,
+                                      ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_TIMEOUT,
+                                      ConnectionMonitor.STATE_CON_TELEMETRY_TIMEOUT_GSM_OK,
+                                      ConnectionMonitor.STATE_CON_TELEMETRY_TIMEOUT_GSM_TIMEOUT]
         self.action_list_no_action = [GpsMonitor.STATE_OK,
                                       GpsMonitor.STATE_NO_FIX_YET,
-                                      OnboardControl.CONNECTION_OK]
+                                      OnboardControl.CONNECTION_OK,
+                                      ConnectionMonitor.STATE_CON_OK]
 
         self.terminate_activated = False
         self.land_here_activated = False
@@ -60,13 +72,17 @@ class OnboardControl(StoppableThread):
             self.gps_state = state
             self.gps_source = source
 
-    def signal_drone_state(self,state):
+    def signal_drone_state(self, state):
         with self.signal_drone_heartbeat_lock:
             self.drone_heartbeat = state
 
-    def signal_gsm_state(self,state):
+    def signal_gsm_state(self, state):
         with self.signal_gsm_lock:
             self.gsm_connection_state = state
+
+    def signal_connection_state(self, state):
+        with self.signal_connection_state_lock:
+            self.connection_state = state
 
     def run(self):
         logger.info('OnboardControl started')
@@ -135,7 +151,8 @@ class OnboardControl(StoppableThread):
     def check_states(self,action_list):
         ret = (self.check_state(self.gps_state,action_list) or \
                self.check_state(self.drone_connection_state, action_list) or \
-               self.check_state(self.gsm_connection_state, action_list))
+               self.check_state(self.gsm_connection_state, action_list) or \
+               self.check_state(self.connection_state, action_list))
         return ret
 
     def disable_wait_here(self):

@@ -77,11 +77,11 @@ class GpsModule(StoppableThread):
 
         # Setup rabbitmq
         # TODO: Change credentials for production setup
-        credentials = pika.credentials.PlainCredentials('guest', 'guest')
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost',credentials=credentials))
-        channel = connection.channel()
+        #credentials = pika.credentials.PlainCredentials('guest', 'guest')
+        #connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost',credentials=credentials))
+        #channel = connection.channel()
         # Durable: Queue will be stored on disk in case of crash, messages must have delivery mode 2 (persistent)
-        channel.queue_declare(queue='externalGps',durable=True)
+        #channel.queue_declare(queue='externalGps',durable=True)
         logger.info('GpsModule started')
         while self.stop_event.is_set() is False:
             # Blocking read a line
@@ -102,11 +102,11 @@ class GpsModule(StoppableThread):
                         #Publish the position
                         message = {'timestamp': self.position_time, 'position': self.position, 'fix_type': self.fix, 'DOP': self.DOP, 'satellites': self.number_of_satellites}
 
-                    channel.basic_publish(exchange='', \
-                        routing_key='externalGps', \
-                        body=json.dumps(message), \
-                        properties=pika.BasicProperties( \
-                        delivery_mode = 2,))
+                    #channel.basic_publish(exchange='', \
+                    #    routing_key='externalGps', \
+                    #    body=json.dumps(message), \
+                    #    properties=pika.BasicProperties( \
+                    #    delivery_mode = 2,))
 
                     logger.debug('GGA ok')
                 else:
@@ -132,7 +132,7 @@ class GpsModule(StoppableThread):
                     logger.warning('GSA not valid')
 
         logger.info('GpsModule terminating')
-        connection.close()
+        #connection.close()
 
     def get_position(self):
         with self.position_lock:
