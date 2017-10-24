@@ -72,8 +72,6 @@ class DroneHandler():
 
     def get_heartbeat(self):
         with self.lock:
-            logger.debug('get_heartbeat called')
-            print self.last_heartbeat
             return self.last_heartbeat
 
     def terminate_flight(self):

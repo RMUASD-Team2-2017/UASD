@@ -129,7 +129,7 @@ class ConnectionMonitor(StoppableThread):
                 logger.warning('Telemetry wrong state')
 
             output = gsm_state + ' ' + to_drone_state + ' ' + drone_serial2_state
-            logger.info(output)
+            logger.debug(output)
 
             # Sleep to obtain desired frequency (rate in Hz)
             time.sleep(float(1) / float(self.rate))
