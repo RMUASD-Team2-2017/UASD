@@ -24,12 +24,13 @@ class OnboardControl(StoppableThread):
     CONNECTION_LOST = 'CONNECTION_LOST'
     CONNECTION_OK = 'CONNECTION_OK'
 
-    def __init__(self,drone_handler, drone_handler_signal_queue, gsm_transmit_queue, rate = 1):
+    def __init__(self,drone_handler, drone_handler_signal_queue, gsm_transmit_queue, gsm_command_queue, rate = 1):
         StoppableThread.__init__(self)
         self.name = 'OnboardControl'
         self.rate = float(rate)
         self.drone_handler = drone_handler
         self.gsm_transmit_queue = gsm_transmit_queue
+        self.gsm_command_queue = gsm_command_queue
         self.signal_gps_lock = threading.Lock()
         self.signal_drone_heartbeat_lock = threading.Lock()
         self.signal_gsm_lock = threading.Lock()
@@ -40,10 +41,13 @@ class OnboardControl(StoppableThread):
         self.drone_connection_state = None
         self.gsm_connection_state = None
         self.connection_state = None
+        self.command_terminate = False
+        self.command_land_here = False
+        self.command_return_to_launch = False
 
         self.signal_queue = drone_handler_signal_queue
 
-        self.action_list_terminate = []
+        self.action_list_terminate = [] # ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
         self.action_list_land_here = [GpsMonitor.STATE_LOST]
         self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
@@ -93,29 +97,43 @@ class OnboardControl(StoppableThread):
             while not self.signal_queue.empty():
                 self.drone_heartbeat = self.signal_queue.get()
 
+            while not self.gsm_command_queue.empty():
+                msg = self.gsm_command_queue.get()
+                if msg['type'] == 'ACTION_TERMINATE':
+                    self.command_terminate = True
+                    logger.info('GSM_COMMAND: Terminate')
+                elif msg['type'] == 'ACTION_LAND_HERE':
+                    self.command_land_here = True
+                    logger.info('GSM_COMMAND: Land here')
+                elif msg['type'] == 'ACTION_RETURN_TO_LAUNCH':
+                    self.command_return_to_launch = True
+                    logger.info('GSM_COMMAND: Return to launch')
+
+
             # Monitor heartbeat from dronekit
             # Lock is not required, just kept for remembrance if we should change something
-            with self.signal_drone_heartbeat_lock:
-                if time.time() - self.drone_heartbeat > OnboardControl.HEARTBEAT_LOST_TIME:
-                    self.drone_connection_state = OnboardControl.CONNECTION_LOST
-                else:
-                    self.drone_connection_state = OnboardControl.CONNECTION_OK
+            # This should probably be moved to connection monitor
+            #with self.signal_drone_heartbeat_lock:
+            #    if time.time() - self.drone_heartbeat > OnboardControl.HEARTBEAT_LOST_TIME:
+            #        self.drone_connection_state = OnboardControl.CONNECTION_LOST
+            #    else:
+            #        self.drone_connection_state = OnboardControl.CONNECTION_OK
 
             # Severity order: Terminate, land here, return to launch, wait 10 seconds
-            if self.check_states(self.action_list_terminate):
+            if self.check_states(self.action_list_terminate) or self.command_terminate:
                 if not self.terminate_activated:
                     logger.info('Action: Terminate flight')
                     self.stop_wait_here_timer()
                     self.terminate_activated = True # We can never enter this again
                     self.drone_handler.terminate_flight()
-            elif self.check_states(self.action_list_land_here):
+            elif self.check_states(self.action_list_land_here) or self.command_land_here:
                 if not self.land_here_activated and \
                    not self.terminate_activated:
                     logger.info('Action: Land here')
                     self.stop_wait_here_timer()
                     self.land_here_activated = True # We can never enter this again
                     self.drone_handler.land_at_current_location()
-            elif self.check_states(self.action_list_return_to_launch):
+            elif self.check_states(self.action_list_return_to_launch) or self.command_return_to_launch:
                 if not self.return_to_launch_activated and \
                    not self.terminate_activated and \
                    not self.land_here_activated:

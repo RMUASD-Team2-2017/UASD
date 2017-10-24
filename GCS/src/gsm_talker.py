@@ -72,7 +72,6 @@ def main():
     gsmTalker.start_heartbeat()
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
-        rospy.loginfo('Main')
         gsmTalker.run()
         rate.sleep()
 

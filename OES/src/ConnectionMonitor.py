@@ -39,6 +39,8 @@ class ConnectionMonitor(StoppableThread):
     STATE_CON_TELEMETRY_LOST_GSM_TIMEOUT = 'STATE_CON_TLM_L_GSM_T'
     STATE_CON_TELEMETRY_LOST_GSM_LOST = 'STATE_CON_TLM_L_GSM_L'
 
+    STATE_CON_SERIAL2_LOST = 'STATE_CON_SERIAL2_L'
+
     # Values
     HEARTBEAT_TIMEOUT = 5.0
     HEARTBEAT_LOST = 10.0
@@ -64,7 +66,7 @@ class ConnectionMonitor(StoppableThread):
             heartbeat_to_drone = self.get_heartbeat_to_drone()
             #heartbeat_from_drone = self.get_heartbeat_from_drone()
             gsm_heartbeat = self.get_heartbeat_gsm()
-            #drone_serial2_heartbeat = self.get_heartbeat_drone_serial2()
+            drone_serial2_heartbeat = self.get_heartbeat_drone_serial2()
 
             # Check them
             to_drone_state = self.check_heartbeat(heartbeat_to_drone)
@@ -74,14 +76,19 @@ class ConnectionMonitor(StoppableThread):
 
             # We don't monitor this for now as it is simply a wire connection.
             # The fc will probably be broke if this is not working
-            # If we wan't to monitor it we should signal to GCS such that it can terminate
-            # drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat)
+            # If we want to monitor it we should signal to GCS such that it can terminate
+            drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat)
 
             # Cases
             if gsm_state == ConnectionMonitor.STATE_CON_NOT_YET or \
-               to_drone_state == ConnectionMonitor.STATE_CON_NOT_YET:
+               to_drone_state == ConnectionMonitor.STATE_CON_NOT_YET or \
+               drone_serial2_state == ConnectionMonitor.STATE_CON_NOT_YET:
                 self.signal(ConnectionMonitor.STATE_CON_NOT_YET)
                 logger.info('Not connected yet')
+            elif drone_serial2_state == ConnectionMonitor.STATE_CON_TIMEOUT or \
+                 drone_serial2_state == ConnectionMonitor.STATE_CON_LOST:
+                self.signal(ConnectionMonitor.STATE_CON_SERIAL2_LOST)
+                logger.debug(ConnectionMonitor.STATE_CON_SERIAL2_LOST)
             elif to_drone_state == ConnectionMonitor.STATE_CON_OK:
                 if gsm_state == ConnectionMonitor.STATE_CON_OK:
                     self.signal(ConnectionMonitor.STATE_CON_OK)
@@ -120,6 +127,9 @@ class ConnectionMonitor(StoppableThread):
                     logger.warning('Telemetry state LOST. GSM wrong state')
             else:
                 logger.warning('Telemetry wrong state')
+
+            output = gsm_state + ' ' + to_drone_state + ' ' + drone_serial2_state
+            logger.info(output)
 
             # Sleep to obtain desired frequency (rate in Hz)
             time.sleep(float(1) / float(self.rate))
