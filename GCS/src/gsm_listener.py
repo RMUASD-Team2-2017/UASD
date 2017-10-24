@@ -41,8 +41,8 @@ class GsmListener(StoppableThread):
         # Only one unacknowledged message allowed at a time
         self.channel.basic_qos(prefetch_count=1)
 
-        self.from_drone_publisher = rospy.Publisher("/gsm_talker/fromDrone", String, queue_size=10)
-        self.gsm_heartbeat_publisher = rospy.Publisher("/gsm_talker/heartbeat", Bool, queue_size=1)
+        self.from_drone_publisher = rospy.Publisher("/gsm_listener/fromDrone", String, queue_size=10)
+        self.gsm_heartbeat_publisher = rospy.Publisher("/gsm_listener/heartbeat", Bool, queue_size=1)
 
     def run(self):
         for message in self.channel.consume(self.topic, inactivity_timeout=1):
