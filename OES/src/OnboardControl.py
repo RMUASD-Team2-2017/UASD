@@ -87,7 +87,7 @@ class OnboardControl(StoppableThread):
 
     def signal_connection_state(self, state):
         with self.signal_connection_state_lock:
-            self.connection_state = state 
+            self.connection_state = state
 
     def run(self):
         logger.info('OnboardControl started')
