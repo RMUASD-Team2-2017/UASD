@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import pika
 import json
@@ -65,18 +66,21 @@ class GsmTalker:
 
 def main():
     rospy.loginfo('Started')
+    rospy.init_node('gsm_talker')
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsmTalker = GsmTalker(pika_connection_string)
-
+    gsmTalker.start_heartbeat()
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
+        rospy.loginfo('Main')
         gsmTalker.run()
         rate.sleep()
 
+    gsmTalker.cleanup()
 
 if __name__ == '__main__':
     try:
         main()
-    except:#rospy.ROSInterruptException: #Catches exceptions to e.g. shutdown
+    except rospy.ROSInterruptException: #Catches exceptions to e.g. shutdown
         print 'Got exception:'
         pass
