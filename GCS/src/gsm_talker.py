@@ -65,8 +65,8 @@ class GsmTalker:
 
 
 def main():
-    rospy.loginfo('Started')
     rospy.init_node('gsm_talker')
+    rospy.loginfo('Started')
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsmTalker = GsmTalker(pika_connection_string)
     gsmTalker.start_heartbeat()
@@ -77,6 +77,7 @@ def main():
         rate.sleep()
 
     gsmTalker.cleanup()
+    rospy.loginfo('Terminated')
 
 if __name__ == '__main__':
     try:

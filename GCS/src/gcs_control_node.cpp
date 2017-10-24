@@ -223,13 +223,14 @@ void GCS_CONTROL_CLASS::run()
 					outside_temperature = pre_flight_msg.response.temperature;
 					outside_humidity = pre_flight_msg.response.humidity;
 					wind_speed = pre_flight_msg.response.windSpeed;
-					if ( pfcheck && pre_flight_msg.response.result == true)
+					/*if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;
 						ROS_INFO("WAIT_FOR_READY");
 					}
 					else
-						ROS_ERROR("Pre-flight check failed.");
+						ROS_ERROR("Pre-flight check failed.");*/
+					state = WAIT_FOR_READY;
 				}
 			}
 			break;
