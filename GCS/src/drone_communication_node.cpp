@@ -243,7 +243,12 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 		communicationStatusPublisher.publish(statusMsg);
 		//ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
 	}
-
+	else
+	{
+		gcs::communicationStatus statusMsg;
+		statusMsg.connected = true;
+		communicationStatusPublisher.publish(statusMsg);
+	}
 }
 
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
@@ -765,7 +770,6 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	return true;
 }
 
-
 bool DRONE_COMM_CLASS::startMissionCallback2(gcs::startMission::Request &req, gcs::startMission::Response &res)
 {
 	bool ret = true;
@@ -791,7 +795,14 @@ int main(int argc, char** argv)
 	ros::Rate rate(20);
 	while(ros::ok())
 	{
-		dc.checkHeartbeat();
+		int delaycounter = 0;
+		if(delaycounter == 20)
+		{
+			dc.checkHeartbeat();
+			delaycounter = 0;
+		}
+		else
+			delaycounter += 1;
 		//dc.control();
 		ros::spinOnce();
 		rate.sleep();
