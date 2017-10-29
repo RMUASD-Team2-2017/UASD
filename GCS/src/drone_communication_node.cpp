@@ -33,6 +33,7 @@
 #include "gcs/communicationStatus.h"
 #include "gcs/returnToLaunch.h"
 #include "gcs/loiter.h"
+#include "gcs/continueMission.h"
 
 
 
@@ -70,7 +71,11 @@ enum droneComState {
 	ENABLE_MISSION_MODE,
 	ENROUTE,
 	ARRIVED,
-	ERROR_STATE
+	ERROR_STATE,
+	INTERVENTION_RTL,
+	INTERVENTION_LOITER,
+	INTERVENTION_LAND_HERE,
+	INTERVENTION_TERMINATE
 };
 
 // #define SETUP									0
@@ -145,6 +150,9 @@ private:
 	bool returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res);
 	ros::ServiceServer loiterServer;
 	bool loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res);
+	ros::ServiceServer continueMissionServer;
+	bool continueMissionCallback(gcs::continueMission::Request &req, gcs::continueMission::Response &res);
+
 
 	// Service client
 	ros::ServiceClient uploadMissionServiceClient;
@@ -192,6 +200,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	stopMissionServer = nh.advertiseService("/drone_communication/stopMission",&DRONE_COMM_CLASS::stopMissionCallback,this);
 	returnToLaunchServer = nh.advertiseService("drone_communication/returnToLaunch",&DRONE_COMM_CLASS::returnToLaunchCallback,this);
 	loiterServer = nh.advertiseService("drone_communication/loiter",&DRONE_COMM_CLASS::loiterCallback,this);
+	continueMissionServer = nh.advertiseService("drone_communication/continueMission",&DRONE_COMM_CLASS::continueMissionCallback,this);
 
 	// Service clients
 	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros1/mission/push");
@@ -489,6 +498,7 @@ bool DRONE_COMM_CLASS::disarmCallback(gcs::disarm::Request &req, gcs::disarm::Re
 		{
 			ROS_INFO("Disarmed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
+			controlStatus = INTERVENTION_TERMINATE;
 		}
 		else
 		{
@@ -545,6 +555,7 @@ bool DRONE_COMM_CLASS::landCallback(gcs::land::Request &req, gcs::land::Response
 		{
 			if(DEBUG) ROS_INFO("Landed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
+			controlStatus = INTERVENTION_LAND_HERE;
 		}
 		else
 		{
@@ -603,6 +614,7 @@ bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req,
 		{
 			ROS_INFO("Setting AUTO.RTL mode");
 			ret = true;
+			controlStatus = INTERVENTION_RTL;
 		}
 	return ret;
 }
@@ -618,10 +630,32 @@ bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Re
 		{
 			ROS_ERROR("Error in setting mode AUTO.LOITER");
 			ret = false;
+			controlStatus = INTERVENTION_LOITER;
 		}
 		else
 		{
 			ROS_INFO("Setting AUTO.LOITER mode");
+			ret = true;
+		}
+	return ret;
+}
+
+bool DRONE_COMM_CLASS::continueMissionCallback(gcs::continueMission::Request &req, gcs::continueMission::Response &res)
+{
+	ROS_INFO("Setmode AUTO.MISSION");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.MISSION";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			ret = false;
+			controlStatus = ENROUTE;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.MISSION mode");
 			ret = true;
 		}
 	return ret;
@@ -806,6 +840,12 @@ void DRONE_COMM_CLASS::control()
 		case ENROUTE:
 			break;
 		case ARRIVED:
+			break;
+		case INTERVENTION_LOITER:
+		case INTERVENTION_RTL:
+		case INTERVENTION_LAND_HERE:
+		case INTERVENTION_TERMINATE:
+			ROS_ERROR("INTERVENTION");
 			break;
 		case ERROR_STATE:
 			ROS_ERROR("ERROR STATE");
