@@ -111,13 +111,13 @@ int main(int argc, char** argv)
 
 // std::ifstream geofence_file ("/home/mathias/Desktop/geofence_test.csv");
 // std::cout << geofence_file.good() << geofence_file.eof() << geofence_file.fail() << geofence_file.bad() << std::endl;
- 
+
 // //ifstream file ( "file.csv" ); // declare file stream: http://www.cplusplus.com/reference/iostream/ifstream/
 //  std::string fieldValue, lat, lon;
 // std::getline  (geofence_file,fieldValue,'\n'); // Skip first line
 // int pointCount = 1;
 // std::vector<point> fence_points;
-// while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) ) 
+// while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) )
 // {
 // 	point temp_point;
 // 	// Skip first field in if statement (to ensure it does not repeat last line)
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 // 	temp_point.lon = std::atof(lon.c_str());
 // 	fence_points.push_back(temp_point);
 // }
-//  geofence_file.close(); 
+//  geofence_file.close();
 
 // std::cout << "Fence points from vector" << std::endl;
 // for( int i = 0; i < fence_points.size(); i++)
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 // {
 // 	std::getline( obstacle_file, pointsInObstacleStr, '\n' );
 // 	int pointsInObstacle = std::atoi(pointsInObstacleStr.c_str());
-// 	std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;	
+// 	std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;
 // 	obstacle temp_obstacle;
 // 	temp_obstacle.height = std::atof(height.c_str());
 // 	for( int i = 0; i < pointsInObstacle; i++) // For all points in this obstacle
@@ -257,12 +257,13 @@ fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
 // 	//ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
 // 	//fence.test_UTM();
 // 	fence.self_test();
-
+	ros::Rate rate(20);
 	while(ros::ok())
 	{
 		if(planner.isRunning())
 			planner.planPath();
 		ros::spinOnce();
+		rate.sleep();
 	}
   return 0;
 }
