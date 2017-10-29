@@ -218,11 +218,11 @@ void GCS_CONTROL_CLASS::run()
 				// if weather ok, open docking station
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
 				{
-					gcs::preFlight pre_flight_msg;
-					bool pfcheck = pre_flight_service_client.call(pre_flight_msg);
-					outside_temperature = pre_flight_msg.response.temperature;
-					outside_humidity = pre_flight_msg.response.humidity;
-					wind_speed = pre_flight_msg.response.windSpeed;
+					// gcs::preFlight pre_flight_msg;
+					// bool pfcheck = pre_flight_service_client.call(pre_flight_msg);
+					// outside_temperature = pre_flight_msg.response.temperature;
+					// outside_humidity = pre_flight_msg.response.humidity;
+					// wind_speed = pre_flight_msg.response.windSpeed;
 					/*if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;

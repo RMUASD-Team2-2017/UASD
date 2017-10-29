@@ -59,6 +59,7 @@
 #define ERROR					5
 
 enum droneComState {
+	WAIT_FOR_CONNECTION,
 	SETUP,
 	IDLE,
 	WAIT_FOR_DEPLOY,
@@ -97,6 +98,7 @@ private:
 	bool setup();
 	bool arm();
 	bool enableMissionMode();
+	bool wait_for_connection();
 
 
 	// Attributes
@@ -104,7 +106,7 @@ private:
 	double heartbeatTimestamp;
 	drone_status curDroneStatus;
 
-	droneComState controlStatus = SETUP;
+	droneComState controlStatus = WAIT_FOR_CONNECTION;
 	int current_waypoint = 0;
 	int last_waypoint = 0;
 	int number_of_waypoints = 0;
@@ -683,9 +685,23 @@ bool DRONE_COMM_CLASS::enableMissionMode()
 	return ret;
 }
 
+bool DRONE_COMM_CLASS::wait_for_connection()
+{
+	if(curDroneStatus.state.connected)
+		return true;
+	else
+		return false;
+}
+
 void DRONE_COMM_CLASS::control()
 {
 	switch (controlStatus) {
+		case WAIT_FOR_CONNECTION:
+				if(wait_for_connection())
+					controlStatus = SETUP;
+				else
+					ros::Duration(1).sleep(); // Wait a second before we check again
+			break;
 		case SETUP:
 			if(setup_trials < 10)
 			{
@@ -809,7 +825,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	}
 
 	int upload_trials = 0;
-	while( upload_trials < 10 )
+	while( !missionReceived && upload_trials < 10 )
 	{
 		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 		{
@@ -821,8 +837,11 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 			upload_trials += 1;
 			ros::Duration(1.0).sleep();
 	}
-  ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
-	res.result = ERROR_UPLOAD_MISSION;
+	if( !missionReceived)
+	{
+	  ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+		res.result = ERROR_UPLOAD_MISSION;
+	}
 	return true;
 }
 
@@ -849,10 +868,11 @@ int main(int argc, char** argv)
 	ros::NodeHandle nh;
 	DRONE_COMM_CLASS dc(nh);
 	ros::Rate rate(20);
+	ros::Duration(5).sleep(); // Sleep for moment to allow the drone to connect
 	while(ros::ok())
 	{
 		int delaycounter = 0;
-		if(delaycounter == 10)
+		if(delaycounter == 20)
 		{
 			dc.checkHeartbeat();
 			delaycounter = 0;

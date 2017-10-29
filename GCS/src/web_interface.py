@@ -1,6 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+import time
 from gcs.msg import waypoint, path
 
 class web_interface:
@@ -93,11 +94,19 @@ class web_interface:
         payload = { 'request_id': self.request_id , 'completed': '1'}
         set_mission_done_url = 'https://www.techgen.dk/AED/admin/set_request_completed.php'
         r = ''
-        try:
-            r = requests.post(url = set_mission_done_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        except:
-            print 'Unexpected error in set_mission_done'
-            return -7
+        complete = False
+        while not complete:
+            try:
+                r = requests.post(url = set_mission_done_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+                json_format = json.loads(r.text)
+                if json_format["status"] == 1:
+                    complete = True
+            except:
+                print 'Unexpected error in set_mission_done'
+            if not complete:
+                time.sleep(1)
+
+
         print '#################################################################################'
         print self.username, self.password
         print self.request_id
@@ -149,7 +158,7 @@ class web_interface:
                 return -10
             print 'setCurrentLocation result: ', r.text
         # Count up but limit. Input: 20 Hz. WIth % 10 -> output: 2 Hz
-        self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 10
+        self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 20
 
     def setRequestDroneIdEta(self,drone_id,eta):
         set_id_and_eta_url = 'https://www.techgen.dk/AED/admin/set_request_drone_eta.php'
