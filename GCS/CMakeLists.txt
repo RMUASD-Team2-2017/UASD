@@ -81,6 +81,8 @@ add_service_files(
   startMission.srv
   stopMission.srv
   openDock.srv
+  returnToLaunch.srv
+  loiter.srv
 )
 
 ## Generate actions in the 'action' folder

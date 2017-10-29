@@ -31,6 +31,9 @@
 #include "gcs/startMission.h"
 #include "gcs/stopMission.h"
 #include "gcs/communicationStatus.h"
+#include "gcs/returnToLaunch.h"
+#include "gcs/loiter.h"
+
 
 
 
@@ -138,6 +141,10 @@ private:
 	bool startMissionCallback2(gcs::startMission::Request &req, gcs::startMission::Response &res);
 	ros::ServiceServer stopMissionServer;
 	bool stopMissionCallback(gcs::stopMission::Request &req, gcs::stopMission::Response &res);
+	ros::ServiceServer returnToLaunchServer;
+	bool returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res);
+	ros::ServiceServer loiterServer;
+	bool loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res);
 
 	// Service client
 	ros::ServiceClient uploadMissionServiceClient;
@@ -160,7 +167,7 @@ private:
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
-  	void stateCallback(const mavros_msgs::State &msg);
+  void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 	ros::Subscriber missionStatusSubscriber;
@@ -183,6 +190,8 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	landService = nh.advertiseService("/drone_communication/land",&DRONE_COMM_CLASS::landCallback,this);
 	startMissionServer = nh.advertiseService("/drone_communication/startMission",&DRONE_COMM_CLASS::startMissionCallback2,this);
 	stopMissionServer = nh.advertiseService("/drone_communication/stopMission",&DRONE_COMM_CLASS::stopMissionCallback,this);
+	returnToLaunchServer = nh.advertiseService("drone_communication/returnToLaunch",&DRONE_COMM_CLASS::returnToLaunchCallback,this);
+	loiterServer = nh.advertiseService("drone_communication/loiter",&DRONE_COMM_CLASS::loiterCallback,this);
 
 	// Service clients
 	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros1/mission/push");
@@ -578,14 +587,45 @@ bool DRONE_COMM_CLASS::startMissionCallback(gcs::startMission::Request &req, gcs
 	return true;
 }
 
-// #define SETUP									0
-// #define	IDLE									1
-// #define WAIT_FOR_DEPLOY				3
-// #define ARM										4
-// #define ENABLE_MISSION_MODE		5
-// #define ENROUTE								6
-// #define ARRIVED								7
-// #define ERROR_SET_MODE				8
+bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res)
+{
+	ROS_INFO("Set mode AUTO.RTL");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.RTL";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.RTL");
+			ret = false;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.RTL mode");
+			ret = true;
+		}
+	return ret;
+}
+
+bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res)
+{
+	ROS_INFO("Setmode AUTO.LOITER");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.LOITER";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.LOITER");
+			ret = false;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.LOITER mode");
+			ret = true;
+		}
+	return ret;
+}
 
 bool DRONE_COMM_CLASS::setup()
 {
