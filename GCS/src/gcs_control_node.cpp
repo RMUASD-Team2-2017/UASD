@@ -251,28 +251,31 @@ void GCS_CONTROL_CLASS::run()
 			{
 				ROS_INFO("DEPLOY");
 				//If everything ok -> arm the drone
-				// gcs::startMission start_msg;
-				// if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
-				// {
-				// 	state = FLYING;
-				// 	ROS_INFO("FLYING");
-				//
-				// }
-				// else
-				// 	ROS_ERROR("Failed to arm");
+				gcs::startMission start_msg;
+				if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
+				{
+					state = FLYING;
+				std_msgs::String msg;
+					msg.data = "transport";
+					uav_state_publisher.publish(msg);
+					ROS_INFO("FLYING");
 
-					gcs::arm arm_msg;
-					if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
-					{
-						state = FLYING;
-						std_msgs::String msg;
-						msg.data = "transport";
-						uav_state_publisher.publish(msg);
-						ROS_INFO("FLYING");
+				}
+				else
+					ROS_ERROR("Failed to arm");
 
-					}
-					else
-						ROS_ERROR("Failed to arm");
+					// gcs::arm arm_msg;
+					// if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
+					// {
+					// 	state = FLYING;
+					// 	std_msgs::String msg;
+					// 	msg.data = "transport";
+					// 	uav_state_publisher.publish(msg);
+					// 	ROS_INFO("FLYING");
+					//
+					// }
+					// else
+					// 	ROS_ERROR("Failed to arm");
 			}
 			break;
 		case FLYING:

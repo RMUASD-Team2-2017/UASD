@@ -58,14 +58,25 @@
 #define ERROR_UPLOAD_MISSION	4
 #define ERROR					5
 
-#define SETUP									0
-#define	IDLE									1
-#define WAIT_FOR_DEPLOY				3
-#define ARM										4
-#define ENABLE_MISSION_MODE		5
-#define ENROUTE								6
-#define ARRIVED								7
-#define ERROR_STATE						8
+enum droneComState {
+	SETUP,
+	IDLE,
+	WAIT_FOR_DEPLOY,
+	ARM,
+	ENABLE_MISSION_MODE,
+	ENROUTE,
+	ARRIVED,
+	ERROR_STATE
+};
+
+// #define SETUP									0
+// #define	IDLE									1
+// #define WAIT_FOR_DEPLOY				3
+// #define ARM										4
+// #define ENABLE_MISSION_MODE		5
+// #define ENROUTE								6
+// #define ARRIVED								7
+// #define ERROR_STATE						8
 
 struct drone_status{
 	sensor_msgs::NavSatFix gpsPosition;
@@ -93,7 +104,7 @@ private:
 	double heartbeatTimestamp;
 	drone_status curDroneStatus;
 
-	int controlStatus = SETUP;
+	droneComState controlStatus = SETUP;
 	int current_waypoint = 0;
 	int last_waypoint = 0;
 	int number_of_waypoints = 0;
@@ -101,6 +112,10 @@ private:
 	bool missionReceived = false;
 	bool missionCleared = false;
 	bool NAV_DLL_ACT_set = false;
+
+	int setup_trials = 0;
+	int missionmode_trials = 0;
+	int arm_trials = 0;
 
 	// Service servers
 	ros::ServiceServer uploadMissionService;
@@ -158,7 +173,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	nh = n;
 
 	// Services
-	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback, this);
+	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback2, this);
  	clearMissionService = nh.advertiseService("/drone_communication/clearMission",&DRONE_COMM_CLASS::clearMissionCallback,this);
 	armService = nh.advertiseService("/drone_communication/arm",&DRONE_COMM_CLASS::armCallback,this);
 	disarmService = nh.advertiseService("/drone_communication/disarm",&DRONE_COMM_CLASS::disarmCallback,this);
@@ -572,11 +587,15 @@ bool DRONE_COMM_CLASS::startMissionCallback(gcs::startMission::Request &req, gcs
 
 bool DRONE_COMM_CLASS::setup()
 {
-	if(curDroneStatus.state.connected)
-		controlStatus = IDLE;
+	if(!curDroneStatus.state.connected)
+	{
+		ROS_ERROR("Drone not connected");
+		return false;
+	}
 
 	if(!missionCleared)
 	{
+		ROS_INFO("Mission clear entered");
 		mavros_msgs::WaypointClear clearMsg;
 		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
 		{
@@ -590,6 +609,7 @@ bool DRONE_COMM_CLASS::setup()
 	}
 	if(!NAV_DLL_ACT_set)
 	{
+		ROS_INFO("NAV_DLL_ACT set entered");
 		mavros_msgs::ParamGet paramGetMsg;
 		paramGetMsg.request.param_id = "NAV_DLL_ACT";
 		if(getParameterServiceClient.call(paramGetMsg) && paramGetMsg.response.value.integer == 0)
@@ -609,12 +629,7 @@ bool DRONE_COMM_CLASS::setup()
 			}
 		}
 	}
-	ros::Duration(1.0).sleep();
-
-	if( missionCleared && NAV_DLL_ACT_set && curDroneStatus.state.connected)
-		controlStatus = IDLE;
-
-	return (missionCleared && NAV_DLL_ACT_set);
+	return (missionCleared && NAV_DLL_ACT_set && curDroneStatus.state.connected);
 }
 
 bool DRONE_COMM_CLASS::arm()
@@ -665,7 +680,6 @@ bool DRONE_COMM_CLASS::enableMissionMode()
 			ROS_INFO("Setting mission mode");
 		}
 	}
-	ros::Duration(1).sleep();
 	return ret;
 }
 
@@ -673,8 +687,40 @@ void DRONE_COMM_CLASS::control()
 {
 	switch (controlStatus) {
 		case SETUP:
-			if(setup())
-				controlStatus = ENABLE_MISSION_MODE;
+			if(setup_trials < 10)
+			{
+				ROS_INFO("Setup attempt: %i", setup_trials);
+				if( setup() )
+					controlStatus = ENABLE_MISSION_MODE;
+				else
+				{
+					setup_trials += 1;
+					ros::Duration(1).sleep();
+				}
+			}
+			else
+			{
+				controlStatus = ERROR_STATE;
+				ROS_ERROR("Setup failed");
+			}
+			break;
+		case ENABLE_MISSION_MODE:
+			if( missionmode_trials < 10)
+			{
+				ROS_INFO("Missionmode attempt: %i", missionmode_trials);
+				if(enableMissionMode())
+						controlStatus = IDLE;
+				else
+				{
+					missionmode_trials += 1;
+					ros::Duration(1).sleep();
+				}
+			}
+			else
+			{
+				controlStatus = ERROR_STATE;
+				ROS_ERROR("Missionmode failed");
+			}
 			break;
 		case IDLE:
 			if(missionReceived)
@@ -685,16 +731,21 @@ void DRONE_COMM_CLASS::control()
 					controlStatus = ARM;
 			break;
 		case ARM:
-				if(arm())
-					controlStatus = ENROUTE;
+				if( arm_trials < 10)
+				{
+					if(arm())
+						controlStatus = ENROUTE;
+					else
+					{
+						arm_trials += 1;
+						ros::Duration(1).sleep();
+					}
+				}
 				else
-					controlStatus = ERROR;
-			break;
-		case ENABLE_MISSION_MODE:
-				if(enableMissionMode())
-					controlStatus = IDLE;
-				else
-					controlStatus = ERROR;
+				{
+					controlStatus = ERROR_STATE;
+					ROS_ERROR("Arm failed");
+				}
 			break;
 		case ENROUTE:
 			break;
@@ -757,16 +808,21 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 		missionMsg.request.waypoints.push_back(wp);
 	}
 
-	if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
+	int upload_trials = 0;
+	while( upload_trials < 10 )
 	{
-    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
-			missionReceived = true;
+		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
+		{
+	    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
+				missionReceived = true;
+				res.result = SUCCESS;
+		}
+		else
+			upload_trials += 1;
+			ros::Duration(1.0).sleep();
 	}
-	else
-	{
-    	ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
-		res.result = ERROR_UPLOAD_MISSION;
-	}
+  ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	res.result = ERROR_UPLOAD_MISSION;
 	return true;
 }
 
@@ -796,14 +852,14 @@ int main(int argc, char** argv)
 	while(ros::ok())
 	{
 		int delaycounter = 0;
-		if(delaycounter == 20)
+		if(delaycounter == 10)
 		{
 			dc.checkHeartbeat();
 			delaycounter = 0;
 		}
 		else
 			delaycounter += 1;
-		//dc.control();
+			dc.control();
 		ros::spinOnce();
 		rate.sleep();
 	}
