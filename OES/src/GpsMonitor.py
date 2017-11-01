@@ -126,14 +126,15 @@ class Geofence:
         # Are we inside the fence
         point2d = (x, y)
         if self.inside_fence(point2d):
-            if not self.inside_obstacle(point2d,altitude):
-                return True
+            return True
 
         return False
 
     def inside_fence(self, point2d):
         return bool(self.cn_PnPoly(point2d, self.fence))
 
+
+    # The obstacle test is not working. We don't develop further until it is deemed necessary.
     def inside_obstacle(self,point2d,altitude):
 
         # We cannot be inside an obstacle if there are none
@@ -172,6 +173,7 @@ class Geofence:
     # liable for any real or imagined damage resulting from its use.
     # Users of this code must verify correctness for their application.
     # translated to Python by Maciej Kalisiak <mac@dgp.toronto.edu>
+    # SOURCE: http://www.dgp.toronto.edu/~mac/e-stuff/point_in_polygon.py
     def cn_PnPoly(self, P, V):
         cn = 0  # the crossing number counter
 
@@ -198,10 +200,10 @@ class Obstacle:
 
 def main():
     fence_points = [(1.0,1.0), (10.0,1.0), (10.0,10.0), (1.0,10.0)]
-    obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
-    obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
-    fence = Geofence(fence_points,obstacles)
-    test_point = (5.0,5.0,5.0)
+    #obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
+    #obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
+    fence = Geofence(fence_points)
+    test_point = (5.0,5.0,100.0)
     print fence.is_point_legal(test_point)
 
    # print obstacle_points
