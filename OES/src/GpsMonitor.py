@@ -41,7 +41,9 @@ class GpsMonitor(StoppableThread):
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
         self.rate = rate
-        self.geofence = Geofence(geofencefile)
+        self.geofence = None
+        if geofencefile is not None:
+            self.geofence = Geofence(geofencefile)
 
     def run(self):
         logger.info('GpsMonitor started')
@@ -115,10 +117,32 @@ class GpsMonitor(StoppableThread):
 
 
 class Geofence:
-    def __init__(self,fence, obstacles=None, maxHeight=100.0):
-        self.fence = fence
+    def __init__(self, fence, convert_to_utm=True, obstacles=None, maxHeight=100.0):
+        self.convert_to_utm = convert_to_utm
+        self.fence = self.load_from_file(fence)
         self.obstacles = obstacles
         self.maxHeight = float(maxHeight)
+
+    def load_from_file(self,file):
+        count = 0
+        points = []
+        f = open(file,"r")
+        for line in f:
+            count = count +1
+            # Remove new lines and split in fields
+            line = line.replace('\n', '')
+            fields = line.split(',')
+            x = float(fields[0])
+            y = float(fields[1])
+            if self.convert_to_utm:
+                utm_point = utm.from_latlon(x,y)
+                x = utm_point[0]
+                y = utm_point[1]
+            points.append((x, y))
+
+        logger.info('Loaded geofence with %i points', count)
+
+        return points
 
     def is_point_legal(self, point3d):
         x = point3d[0]
@@ -204,10 +228,13 @@ class Obstacle:
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     fence_points = [(1.0,1.0), (10.0,1.0), (10.0,10.0), (1.0,10.0)]
     #obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
     #obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
-    fence = Geofence(fence_points)
+    #fence = Geofence(fence_points)
+    fence = Geofence("/home/mathias/Dropbox/ROBTEK/9.-semester/RMUASD/UASD_share/geofence/testfence.txt", convert_to_utm=False)
     test_point = (5.0,5.0,100.0)
     print fence.is_point_legal(test_point)
 
