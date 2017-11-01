@@ -28,18 +28,20 @@ class GpsMonitor(StoppableThread):
     STATE_LOST_BOTH = 'GPS_LOST_BOTH'
     STATE_MISMATCH = 'GPS_MISMATCH'
     STATE_NO_FIX_YET = 'GPS_NO_FIX_YET'
+    STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH'
 
     TIMEOUT_VALUE = 3
     LOST_TIME_VALUE = 10
     MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 50
 
-    def __init__(self, signal_function, get_external_pos, get_internal_pos, rate = 1):
+    def __init__(self, signal_function, get_external_pos, get_internal_pos, geofencefile = None, rate = 1):
         StoppableThread.__init__(self)
         self.name = 'GpsMonitor'
         self.signal = signal_function
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
         self.rate = rate
+        self.geofence = Geofence(geofencefile)
 
     def run(self):
         logger.info('GpsMonitor started')
@@ -80,7 +82,11 @@ class GpsMonitor(StoppableThread):
                        (external_pos_utm[1]-internal_pos_utm[1])**2 + \
                        (external_pos['position']['alt'] - internal_pos['position']['alt'])**2)
                 if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE:
-                    self.signal(GpsMonitor.STATE_OK)
+                    if not self.geofence is None:
+                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt'])):
+                            self.signal(GpsMonitor.STATE_OK)
+                        else:
+                            self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)
                 else:
                     self.signal(GpsMonitor.STATE_MISMATCH)
 
@@ -120,7 +126,7 @@ class Geofence:
         altitude = point3d[2]
 
         # Are we above maximal height
-        if(altitude > self.maxHeight):
+        if altitude > self.maxHeight:
             return False
 
         # Are we inside the fence
@@ -132,7 +138,6 @@ class Geofence:
 
     def inside_fence(self, point2d):
         return bool(self.cn_PnPoly(point2d, self.fence))
-
 
     # The obstacle test is not working. We don't develop further until it is deemed necessary.
     def inside_obstacle(self,point2d,altitude):
