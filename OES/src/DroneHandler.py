@@ -1,6 +1,7 @@
 import threading
 import time
 import logging
+from Queue import Queue
 from dronekit import connect, VehicleMode, Command, LocationGlobal
 from pymavlink import mavutil
 
@@ -25,6 +26,7 @@ class DroneHandler():
 
     STATE_OK = 'HEARTBEAT_OK'
     STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
+    MANUAL_MODE = 'MANUAL'
     def __init__(self,port,baud,signal_queue):
         # TODO: Add baud= for a real drone
         # Connect to the drone
@@ -38,6 +40,7 @@ class DroneHandler():
         self.lock = threading.Lock()
         self.vehicle.class_access_hack = self # Inspired by group 1. Hack to access class from decorator callbacks
         self.signal = signal_queue
+        self.mode = None
 
         logger.info('DroneHandler started')
 
@@ -65,6 +68,16 @@ class DroneHandler():
             with self.class_access_hack.lock:
                 self.class_access_hack.signal.put(time.time())
                 self.class_access_hack.last_heartbeat = time.time()
+
+        @self.vehicle.on_attribute('mode')
+        def mode_listener(seself, attr_name, value):
+            with self.class_access_hack.lock:
+                self.class_access_hack.mode = value
+                logger.debug('Mode %s',value)
+
+    def get_mode(self):
+        with self.lock:
+            return self.mode
 
     def get_position(self):
         with self.lock:
@@ -98,3 +111,18 @@ class DroneHandler():
     def close(self):
         self.vehicle.close()
         logger.info('DroneHandler terminating')
+
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.info('Started')
+    drone_handler_signal_queue = Queue()
+    drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
+    while True:
+        time.sleep(1)
+        print drone_handler.get_mode()
+
+
+if __name__ == "__main__":
+    main()

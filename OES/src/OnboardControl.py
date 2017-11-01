@@ -1,6 +1,7 @@
 import threading
 import time
 import logging
+from DroneHandler import DroneHandler
 from GpsMonitor import GpsMonitor
 from ConnectionMonitor import ConnectionMonitor
 
@@ -109,6 +110,11 @@ class OnboardControl(StoppableThread):
                     self.command_return_to_launch = True
                     logger.info('GSM_COMMAND: Return to launch')
 
+            # We should never override manual mode
+            mode = self.drone_handler.get_mode()
+            if mode == DroneHandler.MANUAL_MODE:
+                # Skip the rest of the loop and start over
+                continue
 
             # Monitor heartbeat from dronekit
             # Lock is not required, just kept for remembrance if we should change something
