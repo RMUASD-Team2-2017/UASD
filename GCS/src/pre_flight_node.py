@@ -8,8 +8,10 @@ def handle_pre_flight_srv(req):
 	weather = Weather()
     # TODO get actual location
 	weather.setLocation(55.471089000000006, 10.330159499999999, 1)
-	check = float(weather.getWindSpeed()) < 10 # m/s
-	is_wet = float(weather.getHumidity()) > 50 # Percent
+	wspd = float(weather.getWindSpeed())
+	check = float(wspd) < 10 # m/s
+	hmd = float(weather.getHumidity())
+	is_wet = float(hmd) > 50 # Percent
 	tmpt = float(weather.getTemperature()) # C
 
 	if is_wet:
@@ -19,7 +21,7 @@ def handle_pre_flight_srv(req):
     # weather.getWindDirection()
     # weather.getWindCategory()
 
-	return preFlightResponse(check)
+	return preFlightResponse(check, tmpt, hmd, wspd)
 
 def pre_flight():
 	rospy.init_node('pre_flight')
