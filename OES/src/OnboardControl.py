@@ -112,7 +112,10 @@ class OnboardControl(StoppableThread):
 
             # We should never override manual mode
             mode = self.drone_handler.get_mode()
-            if mode == DroneHandler.MANUAL_MODE:
+            if mode == DroneHandler.MANUAL_MODE or mode == None:
+                logger.debug("NO ONBOARD CONTROL: Manual mode or no mode yet")
+                # Sleep to obtain desired rate
+                time.sleep(1.0 / self.rate)
                 # Skip the rest of the loop and start over
                 continue
 
