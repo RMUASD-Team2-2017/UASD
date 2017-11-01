@@ -31,6 +31,10 @@
 #include "gcs/startMission.h"
 #include "gcs/stopMission.h"
 #include "gcs/communicationStatus.h"
+#include "gcs/returnToLaunch.h"
+#include "gcs/loiter.h"
+#include "gcs/continueMission.h"
+
 
 
 
@@ -58,14 +62,30 @@
 #define ERROR_UPLOAD_MISSION	4
 #define ERROR					5
 
-#define SETUP									0
-#define	IDLE									1
-#define WAIT_FOR_DEPLOY				3
-#define ARM										4
-#define ENABLE_MISSION_MODE		5
-#define ENROUTE								6
-#define ARRIVED								7
-#define ERROR_STATE						8
+enum droneComState {
+	WAIT_FOR_CONNECTION,
+	SETUP,
+	IDLE,
+	WAIT_FOR_DEPLOY,
+	ARM,
+	ENABLE_MISSION_MODE,
+	ENROUTE,
+	ARRIVED,
+	ERROR_STATE,
+	INTERVENTION_RTL,
+	INTERVENTION_LOITER,
+	INTERVENTION_LAND_HERE,
+	INTERVENTION_TERMINATE
+};
+
+// #define SETUP									0
+// #define	IDLE									1
+// #define WAIT_FOR_DEPLOY				3
+// #define ARM										4
+// #define ENABLE_MISSION_MODE		5
+// #define ENROUTE								6
+// #define ARRIVED								7
+// #define ERROR_STATE						8
 
 struct drone_status{
 	sensor_msgs::NavSatFix gpsPosition;
@@ -86,6 +106,7 @@ private:
 	bool setup();
 	bool arm();
 	bool enableMissionMode();
+	bool wait_for_connection();
 
 
 	// Attributes
@@ -93,7 +114,7 @@ private:
 	double heartbeatTimestamp;
 	drone_status curDroneStatus;
 
-	int controlStatus = SETUP;
+	droneComState controlStatus = WAIT_FOR_CONNECTION;
 	int current_waypoint = 0;
 	int last_waypoint = 0;
 	int number_of_waypoints = 0;
@@ -101,6 +122,10 @@ private:
 	bool missionReceived = false;
 	bool missionCleared = false;
 	bool NAV_DLL_ACT_set = false;
+
+	int setup_trials = 0;
+	int missionmode_trials = 0;
+	int arm_trials = 0;
 
 	// Service servers
 	ros::ServiceServer uploadMissionService;
@@ -121,6 +146,13 @@ private:
 	bool startMissionCallback2(gcs::startMission::Request &req, gcs::startMission::Response &res);
 	ros::ServiceServer stopMissionServer;
 	bool stopMissionCallback(gcs::stopMission::Request &req, gcs::stopMission::Response &res);
+	ros::ServiceServer returnToLaunchServer;
+	bool returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res);
+	ros::ServiceServer loiterServer;
+	bool loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res);
+	ros::ServiceServer continueMissionServer;
+	bool continueMissionCallback(gcs::continueMission::Request &req, gcs::continueMission::Response &res);
+
 
 	// Service client
 	ros::ServiceClient uploadMissionServiceClient;
@@ -143,7 +175,7 @@ private:
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
-  	void stateCallback(const mavros_msgs::State &msg);
+  void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 	ros::Subscriber missionStatusSubscriber;
@@ -158,7 +190,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	nh = n;
 
 	// Services
-	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback, this);
+	uploadMissionService = nh.advertiseService("/drone_communication/uploadMission",&DRONE_COMM_CLASS::uploadMissionCallback2, this);
  	clearMissionService = nh.advertiseService("/drone_communication/clearMission",&DRONE_COMM_CLASS::clearMissionCallback,this);
 	armService = nh.advertiseService("/drone_communication/arm",&DRONE_COMM_CLASS::armCallback,this);
 	disarmService = nh.advertiseService("/drone_communication/disarm",&DRONE_COMM_CLASS::disarmCallback,this);
@@ -166,6 +198,9 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	landService = nh.advertiseService("/drone_communication/land",&DRONE_COMM_CLASS::landCallback,this);
 	startMissionServer = nh.advertiseService("/drone_communication/startMission",&DRONE_COMM_CLASS::startMissionCallback2,this);
 	stopMissionServer = nh.advertiseService("/drone_communication/stopMission",&DRONE_COMM_CLASS::stopMissionCallback,this);
+	returnToLaunchServer = nh.advertiseService("drone_communication/returnToLaunch",&DRONE_COMM_CLASS::returnToLaunchCallback,this);
+	loiterServer = nh.advertiseService("drone_communication/loiter",&DRONE_COMM_CLASS::loiterCallback,this);
+	continueMissionServer = nh.advertiseService("drone_communication/continueMission",&DRONE_COMM_CLASS::continueMissionCallback,this);
 
 	// Service clients
 	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros1/mission/push");
@@ -243,7 +278,12 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 		communicationStatusPublisher.publish(statusMsg);
 		//ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
 	}
-
+	else
+	{
+		gcs::communicationStatus statusMsg;
+		statusMsg.connected = true;
+		communicationStatusPublisher.publish(statusMsg);
+	}
 }
 
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
@@ -458,6 +498,7 @@ bool DRONE_COMM_CLASS::disarmCallback(gcs::disarm::Request &req, gcs::disarm::Re
 		{
 			ROS_INFO("Disarmed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
+			controlStatus = INTERVENTION_TERMINATE;
 		}
 		else
 		{
@@ -514,6 +555,7 @@ bool DRONE_COMM_CLASS::landCallback(gcs::land::Request &req, gcs::land::Response
 		{
 			if(DEBUG) ROS_INFO("Landed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
+			controlStatus = INTERVENTION_LAND_HERE;
 		}
 		else
 		{
@@ -556,22 +598,80 @@ bool DRONE_COMM_CLASS::startMissionCallback(gcs::startMission::Request &req, gcs
 	return true;
 }
 
-// #define SETUP									0
-// #define	IDLE									1
-// #define WAIT_FOR_DEPLOY				3
-// #define ARM										4
-// #define ENABLE_MISSION_MODE		5
-// #define ENROUTE								6
-// #define ARRIVED								7
-// #define ERROR_SET_MODE				8
+bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res)
+{
+	ROS_INFO("Set mode AUTO.RTL");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.RTL";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.RTL");
+			ret = false;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.RTL mode");
+			ret = true;
+			controlStatus = INTERVENTION_RTL;
+		}
+	return ret;
+}
+
+bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res)
+{
+	ROS_INFO("Setmode AUTO.LOITER");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.LOITER";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.LOITER");
+			ret = false;
+			controlStatus = INTERVENTION_LOITER;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.LOITER mode");
+			ret = true;
+		}
+	return ret;
+}
+
+bool DRONE_COMM_CLASS::continueMissionCallback(gcs::continueMission::Request &req, gcs::continueMission::Response &res)
+{
+	ROS_INFO("Setmode AUTO.MISSION");
+	bool ret = false;
+	mavros_msgs::SetMode setModeMsg;
+	setModeMsg.request.custom_mode = "AUTO.MISSION";
+
+		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		{
+			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			ret = false;
+			controlStatus = ENROUTE;
+		}
+		else
+		{
+			ROS_INFO("Setting AUTO.MISSION mode");
+			ret = true;
+		}
+	return ret;
+}
 
 bool DRONE_COMM_CLASS::setup()
 {
-	if(curDroneStatus.state.connected)
-		controlStatus = IDLE;
+	if(!curDroneStatus.state.connected)
+	{
+		ROS_ERROR("Drone not connected");
+		return false;
+	}
 
 	if(!missionCleared)
 	{
+		ROS_INFO("Mission clear entered");
 		mavros_msgs::WaypointClear clearMsg;
 		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
 		{
@@ -585,6 +685,7 @@ bool DRONE_COMM_CLASS::setup()
 	}
 	if(!NAV_DLL_ACT_set)
 	{
+		ROS_INFO("NAV_DLL_ACT set entered");
 		mavros_msgs::ParamGet paramGetMsg;
 		paramGetMsg.request.param_id = "NAV_DLL_ACT";
 		if(getParameterServiceClient.call(paramGetMsg) && paramGetMsg.response.value.integer == 0)
@@ -604,12 +705,7 @@ bool DRONE_COMM_CLASS::setup()
 			}
 		}
 	}
-	ros::Duration(1.0).sleep();
-
-	if( missionCleared && NAV_DLL_ACT_set && curDroneStatus.state.connected)
-		controlStatus = IDLE;
-
-	return (missionCleared && NAV_DLL_ACT_set);
+	return (missionCleared && NAV_DLL_ACT_set && curDroneStatus.state.connected);
 }
 
 bool DRONE_COMM_CLASS::arm()
@@ -660,16 +756,61 @@ bool DRONE_COMM_CLASS::enableMissionMode()
 			ROS_INFO("Setting mission mode");
 		}
 	}
-	ros::Duration(1).sleep();
 	return ret;
+}
+
+bool DRONE_COMM_CLASS::wait_for_connection()
+{
+	if(curDroneStatus.state.connected)
+		return true;
+	else
+		return false;
 }
 
 void DRONE_COMM_CLASS::control()
 {
 	switch (controlStatus) {
+		case WAIT_FOR_CONNECTION:
+				if(wait_for_connection())
+					controlStatus = SETUP;
+				else
+					ros::Duration(1).sleep(); // Wait a second before we check again
+			break;
 		case SETUP:
-			if(setup())
-				controlStatus = ENABLE_MISSION_MODE;
+			if(setup_trials < 10)
+			{
+				ROS_INFO("Setup attempt: %i", setup_trials);
+				if( setup() )
+					controlStatus = ENABLE_MISSION_MODE;
+				else
+				{
+					setup_trials += 1;
+					ros::Duration(1).sleep();
+				}
+			}
+			else
+			{
+				controlStatus = ERROR_STATE;
+				ROS_ERROR("Setup failed");
+			}
+			break;
+		case ENABLE_MISSION_MODE:
+			if( missionmode_trials < 10)
+			{
+				ROS_INFO("Missionmode attempt: %i", missionmode_trials);
+				if(enableMissionMode())
+						controlStatus = IDLE;
+				else
+				{
+					missionmode_trials += 1;
+					ros::Duration(1).sleep();
+				}
+			}
+			else
+			{
+				controlStatus = ERROR_STATE;
+				ROS_ERROR("Missionmode failed");
+			}
 			break;
 		case IDLE:
 			if(missionReceived)
@@ -680,20 +821,31 @@ void DRONE_COMM_CLASS::control()
 					controlStatus = ARM;
 			break;
 		case ARM:
-				if(arm())
-					controlStatus = ENROUTE;
+				if( arm_trials < 10)
+				{
+					if(arm())
+						controlStatus = ENROUTE;
+					else
+					{
+						arm_trials += 1;
+						ros::Duration(1).sleep();
+					}
+				}
 				else
-					controlStatus = ERROR;
-			break;
-		case ENABLE_MISSION_MODE:
-				if(enableMissionMode())
-					controlStatus = IDLE;
-				else
-					controlStatus = ERROR;
+				{
+					controlStatus = ERROR_STATE;
+					ROS_ERROR("Arm failed");
+				}
 			break;
 		case ENROUTE:
 			break;
 		case ARRIVED:
+			break;
+		case INTERVENTION_LOITER:
+		case INTERVENTION_RTL:
+		case INTERVENTION_LAND_HERE:
+		case INTERVENTION_TERMINATE:
+			ROS_ERROR("INTERVENTION");
 			break;
 		case ERROR_STATE:
 			ROS_ERROR("ERROR STATE");
@@ -752,19 +904,26 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 		missionMsg.request.waypoints.push_back(wp);
 	}
 
-	if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
+	int upload_trials = 0;
+	while( !missionReceived && upload_trials < 10 )
 	{
-    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
-			missionReceived = true;
+		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
+		{
+	    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
+				missionReceived = true;
+				res.result = SUCCESS;
+		}
+		else
+			upload_trials += 1;
+			ros::Duration(1.0).sleep();
 	}
-	else
+	if( !missionReceived)
 	{
-    	ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	  ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
 		res.result = ERROR_UPLOAD_MISSION;
 	}
 	return true;
 }
-
 
 bool DRONE_COMM_CLASS::startMissionCallback2(gcs::startMission::Request &req, gcs::startMission::Response &res)
 {
@@ -789,10 +948,18 @@ int main(int argc, char** argv)
 	ros::NodeHandle nh;
 	DRONE_COMM_CLASS dc(nh);
 	ros::Rate rate(20);
+	ros::Duration(5).sleep(); // Sleep for moment to allow the drone to connect
 	while(ros::ok())
 	{
-		dc.checkHeartbeat();
-		//dc.control();
+		int delaycounter = 0;
+		if(delaycounter == 20)
+		{
+			dc.checkHeartbeat();
+			delaycounter = 0;
+		}
+		else
+			delaycounter += 1;
+			dc.control();
 		ros::spinOnce();
 		rate.sleep();
 	}

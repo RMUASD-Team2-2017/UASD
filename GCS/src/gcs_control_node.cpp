@@ -14,10 +14,15 @@
 #include "gcs/dockData.h"
 #include "gcs/openDock.h"
 #include "gcs/preFlight.h"
+#include "gcs/communicationStatus.h"
+
 
 #include "sensor_msgs/NavSatFix.h"
 
 #include "mavros_msgs/WaypointList.h"
+
+#include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 
 
 #define NAME_AS_STRING(macro) #macro
@@ -74,6 +79,10 @@ class GCS_CONTROL_CLASS
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
 		ros::Subscriber dock_data_subscriber;
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
+
+		ros::Publisher uav_state_publisher;
+		ros::Publisher mission_completed_publisher;
+		ros::Publisher communicationStatusPublisher;
 
 		/* Methods */
 
@@ -135,6 +144,13 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
 
+	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
+	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
+	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
+
+	std_msgs::String msg;
+	msg.data = "idle";
+	uav_state_publisher.publish(msg);
 }
 
 void GCS_CONTROL_CLASS::run()
@@ -154,7 +170,7 @@ void GCS_CONTROL_CLASS::run()
 					ROS_ERROR("Docking station conditions critical.");
 				}
 				// Continuosly monitor drone and docking station
-				//ROS_INFO("IDLE");
+				ROS_INFO("IDLE");
 			}
 			break;
 		case RECEIVED_DISTRESS_CALL:
@@ -198,18 +214,19 @@ void GCS_CONTROL_CLASS::run()
 				// if weather ok, open docking station
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
 				{
-					gcs::preFlight pre_flight_msg;
-					bool pfcheck = pre_flight_service_client.call(pre_flight_msg);
-					outside_temperature = pre_flight_msg.response.temperature;
-					outside_humidity = pre_flight_msg.response.humidity;
-					wind_speed = pre_flight_msg.response.windSpeed;
-					if ( pfcheck && pre_flight_msg.response.result == true)
+					// gcs::preFlight pre_flight_msg;
+					// bool pfcheck = pre_flight_service_client.call(pre_flight_msg);
+					// outside_temperature = pre_flight_msg.response.temperature;
+					// outside_humidity = pre_flight_msg.response.humidity;
+					// wind_speed = pre_flight_msg.response.windSpeed;
+					/*if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;
 						ROS_INFO("WAIT_FOR_READY");
 					}
 					else
-						ROS_ERROR("Pre-flight check failed.");
+						ROS_ERROR("Pre-flight check failed.");*/
+					state = WAIT_FOR_READY;
 				}
 			}
 			break;
@@ -230,25 +247,31 @@ void GCS_CONTROL_CLASS::run()
 			{
 				ROS_INFO("DEPLOY");
 				//If everything ok -> arm the drone
-				// gcs::startMission start_msg;
-				// if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
-				// {
-				// 	state = FLYING;
-				// 	ROS_INFO("FLYING");
-				//
-				// }
-				// else
-				// 	ROS_ERROR("Failed to arm");
+				gcs::startMission start_msg;
+				if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
+				{
+					state = FLYING;
+				std_msgs::String msg;
+					msg.data = "transport";
+					uav_state_publisher.publish(msg);
+					ROS_INFO("FLYING");
 
-					gcs::arm arm_msg;
-					if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
-					{
-						state = FLYING;
-						ROS_INFO("FLYING");
+				}
+				else
+					ROS_ERROR("Failed to arm");
 
-					}
-					else
-						ROS_ERROR("Failed to arm");
+					// gcs::arm arm_msg;
+					// if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
+					// {
+					// 	state = FLYING;
+					// 	std_msgs::String msg;
+					// 	msg.data = "transport";
+					// 	uav_state_publisher.publish(msg);
+					// 	ROS_INFO("FLYING");
+					//
+					// }
+					// else
+					// 	ROS_ERROR("Failed to arm");
 			}
 			break;
 		case FLYING:
@@ -257,12 +280,18 @@ void GCS_CONTROL_CLASS::run()
 				{
 					state = ARRIVED;
 					ROS_INFO("ARRIVED");
+					std_msgs::String msg;
+					msg.data = "landed";
+					uav_state_publisher.publish(msg);
+					std_msgs::Bool complete_msg;
+					mission_completed_publisher.publish(complete_msg);
 				}
 				// Monitor during flight
 			}
 			break;
 		case ARRIVED:
 			{
+
 				// ?
 			}
 			break;
@@ -277,6 +306,7 @@ void GCS_CONTROL_CLASS::pathSubscriberCallback(const gcs::path::ConstPtr& msg)
 {
 	planned_path = *msg;
 	mission_upload_state = PATH_RECEIVED;
+	ROS_INFO("Path callback");
 }
 
 void GCS_CONTROL_CLASS::deploySubscriberCallback(const gcs::deploy_request::ConstPtr& msg)

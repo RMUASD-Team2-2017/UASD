@@ -63,6 +63,8 @@ add_message_files(
   path.msg
   waypoint.msg
   dockData.msg
+  setPreflightData.msg
+  toDroneData.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -79,6 +81,9 @@ add_service_files(
   startMission.srv
   stopMission.srv
   openDock.srv
+  returnToLaunch.srv
+  loiter.srv
+  continueMission.srv
 )
 
 ## Generate actions in the 'action' folder
