@@ -1,0 +1,51 @@
+#pragma once
+#include <vector>
+#include <limits>
+#include "geofence.h"
+
+// ROS
+#include <ros/ros.h>
+#include "gcs/planPath.h"
+#include "gcs/waypoint.h"
+#include "gcs/path.h"
+
+struct Node
+{
+    Node(point coordinate)
+    {
+        this->coordinate = coordinate;
+    }
+
+    void print_node()
+    {
+        std::cout << "Lat: " << coordinate.lat << " Lon: " << coordinate.lon << std::endl;
+    }
+
+    point coordinate;
+    Node *parent = nullptr;
+    std::vector<Node*> neighbors;
+    double gscore = std::numeric_limits<double>::max();;
+    double fscore = std::numeric_limits<double>::max();;
+};
+
+class Path_planner
+{
+    public:
+        Path_planner(geofence &fence);
+        gcs::path plan_path(point start, point goal);
+        void set_nodes(std::vector<point> points);
+        void print_nodes();
+
+    private:
+        void connect_all_nodes();
+        void shrink_nodes(double shrink_factor);
+        std::vector<Node*> a_star(Node *start, Node *goal);
+        double heuristic_dist(Node *start, Node *goal);
+        Node* get_node_with_lowest_fscore(std::vector<Node*> &openset);
+        std::vector<Node*> reconstruct_path(Node *current);
+        void remove_node(std::vector<Node*> openset, Node* node);
+        bool is_node_in_set(std::vector<Node*> set, Node* node);
+        gcs::waypoint convert_node_to_waypoint(Node *node);
+        geofence *fence;
+        std::vector<Node> nodes;
+};
