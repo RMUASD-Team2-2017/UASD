@@ -221,8 +221,9 @@ void GCS_CONTROL_CLASS::run()
 						ROS_INFO("WAIT_FOR_READY");
 					}
 					else
+					{
 						ROS_ERROR("Pre-flight check failed.");
-					state = WAIT_FOR_READY;
+					}
 				}
 			}
 			break;

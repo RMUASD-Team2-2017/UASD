@@ -237,7 +237,13 @@ void DRONE_COMM_CLASS::stateCallback(const mavros_msgs::State &msg)
 	heartbeatTimestamp = ros::Time::now().toSec();
 	curDroneStatus.state = msg;
 	statePublisher.publish(msg);
-	if(DEBUG) ROS_INFO("Heartbeat");
+	if(DEBUG){
+		ROS_INFO("Heartbeat");
+		if(controlStatus == IDLE)
+			std::cout << " State: " << "IDLE" << std::endl;
+		else
+			std::cout << " State: " << " not IDLE " << controlStatus<< std::endl;
+	}
 }
 
 void DRONE_COMM_CLASS::globalPositionCallback(const sensor_msgs::NavSatFix &msg)
@@ -777,29 +783,37 @@ void DRONE_COMM_CLASS::control()
 					ros::Duration(1).sleep(); // Wait a second before we check again
 			break;
 		case SETUP:
-			if(setup_trials < 10)
-			{
-				ROS_INFO("Setup attempt: %i", setup_trials);
-				if( setup() )
-					controlStatus = ENABLE_MISSION_MODE;
+			if(curDroneStatus.state.mode != "MANUAL") {
+
+				if(setup_trials < 10)
+				{
+					ROS_INFO("Setup attempt: %i", setup_trials);
+					if( setup() )
+						controlStatus = ENABLE_MISSION_MODE;
+					else
+					{
+						setup_trials += 1;
+						ros::Duration(1).sleep();
+					}
+				}
 				else
 				{
-					setup_trials += 1;
-					ros::Duration(1).sleep();
+						controlStatus = ERROR_STATE;
+						ROS_ERROR("Setup failed");
 				}
 			}
 			else
 			{
-				controlStatus = ERROR_STATE;
-				ROS_ERROR("Setup failed");
+				ROS_ERROR("RC in manual mode. Switch to another mode");
 			}
+
 			break;
 		case ENABLE_MISSION_MODE:
 			if( missionmode_trials < 10)
 			{
 				ROS_INFO("Missionmode attempt: %i", missionmode_trials);
 				if(enableMissionMode())
-						controlStatus = IDLE;
+					controlStatus = IDLE;
 				else
 				{
 					missionmode_trials += 1;
@@ -821,18 +835,15 @@ void DRONE_COMM_CLASS::control()
 					controlStatus = ARM;
 			break;
 		case ARM:
-				if( arm_trials < 10)
-				{
-					if(arm())
+				std::cout << "Mode: " << curDroneStatus.state.mode << std::endl;
+				if (arm_trials < 10) {
+					if (arm())
 						controlStatus = ENROUTE;
-					else
-					{
+					else {
 						arm_trials += 1;
 						ros::Duration(1).sleep();
 					}
-				}
-				else
-				{
+				} else {
 					controlStatus = ERROR_STATE;
 					ROS_ERROR("Arm failed");
 				}
@@ -861,6 +872,11 @@ bool DRONE_COMM_CLASS::stopMissionCallback(gcs::stopMission::Request &req, gcs::
 bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
 {
 	if(DEBUG) ROS_INFO("Uploading mission");
+	if(controlStatus != IDLE)
+	{
+		res.result = ERROR_UPLOAD_MISSION;
+		return false;
+	}
 
 	int numberOfWaypoints = req.waypoints.path.size();
 	if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
@@ -949,9 +965,9 @@ int main(int argc, char** argv)
 	DRONE_COMM_CLASS dc(nh);
 	ros::Rate rate(20);
 	ros::Duration(5).sleep(); // Sleep for moment to allow the drone to connect
+	int delaycounter = 0;
 	while(ros::ok())
 	{
-		int delaycounter = 0;
 		if(delaycounter == 20)
 		{
 			dc.checkHeartbeat();
