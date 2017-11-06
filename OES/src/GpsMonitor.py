@@ -28,18 +28,22 @@ class GpsMonitor(StoppableThread):
     STATE_LOST_BOTH = 'GPS_LOST_BOTH'
     STATE_MISMATCH = 'GPS_MISMATCH'
     STATE_NO_FIX_YET = 'GPS_NO_FIX_YET'
+    STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH'
 
     TIMEOUT_VALUE = 3
     LOST_TIME_VALUE = 10
     MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 50
 
-    def __init__(self, signal_function, get_external_pos, get_internal_pos, rate = 1):
+    def __init__(self, signal_function, get_external_pos, get_internal_pos, geofencefile = None, rate = 1):
         StoppableThread.__init__(self)
         self.name = 'GpsMonitor'
         self.signal = signal_function
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
         self.rate = rate
+        self.geofence = None
+        if geofencefile is not None:
+            self.geofence = Geofence(geofencefile)
 
     def run(self):
         logger.info('GpsMonitor started')
@@ -80,7 +84,11 @@ class GpsMonitor(StoppableThread):
                        (external_pos_utm[1]-internal_pos_utm[1])**2 + \
                        (external_pos['position']['alt'] - internal_pos['position']['alt'])**2)
                 if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE:
-                    self.signal(GpsMonitor.STATE_OK)
+                    if not self.geofence is None:
+                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt'])):
+                            self.signal(GpsMonitor.STATE_OK)
+                        else:
+                            self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)
                 else:
                     self.signal(GpsMonitor.STATE_MISMATCH)
 
@@ -109,10 +117,32 @@ class GpsMonitor(StoppableThread):
 
 
 class Geofence:
-    def __init__(self,fence, obstacles=None, maxHeight=100.0):
-        self.fence = fence
+    def __init__(self, fence, convert_to_utm=True, obstacles=None, maxHeight=100.0):
+        self.convert_to_utm = convert_to_utm
+        self.fence = self.load_from_file(fence)
         self.obstacles = obstacles
         self.maxHeight = float(maxHeight)
+
+    def load_from_file(self,file):
+        count = 0
+        points = []
+        f = open(file,"r")
+        for line in f:
+            count = count +1
+            # Remove new lines and split in fields
+            line = line.replace('\n', '')
+            fields = line.split(',')
+            x = float(fields[0])
+            y = float(fields[1])
+            if self.convert_to_utm:
+                utm_point = utm.from_latlon(x,y)
+                x = utm_point[0]
+                y = utm_point[1]
+            points.append((x, y))
+
+        logger.info('Loaded geofence with %i points', count)
+
+        return points
 
     def is_point_legal(self, point3d):
         x = point3d[0]
@@ -120,20 +150,20 @@ class Geofence:
         altitude = point3d[2]
 
         # Are we above maximal height
-        if(altitude > self.maxHeight):
+        if altitude > self.maxHeight:
             return False
 
         # Are we inside the fence
         point2d = (x, y)
         if self.inside_fence(point2d):
-            if not self.inside_obstacle(point2d,altitude):
-                return True
+            return True
 
         return False
 
     def inside_fence(self, point2d):
         return bool(self.cn_PnPoly(point2d, self.fence))
 
+    # The obstacle test is not working. We don't develop further until it is deemed necessary.
     def inside_obstacle(self,point2d,altitude):
 
         # We cannot be inside an obstacle if there are none
@@ -172,6 +202,7 @@ class Geofence:
     # liable for any real or imagined damage resulting from its use.
     # Users of this code must verify correctness for their application.
     # translated to Python by Maciej Kalisiak <mac@dgp.toronto.edu>
+    # SOURCE: http://www.dgp.toronto.edu/~mac/e-stuff/point_in_polygon.py
     def cn_PnPoly(self, P, V):
         cn = 0  # the crossing number counter
 
@@ -197,11 +228,14 @@ class Obstacle:
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     fence_points = [(1.0,1.0), (10.0,1.0), (10.0,10.0), (1.0,10.0)]
-    obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
-    obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
-    fence = Geofence(fence_points,obstacles)
-    test_point = (5.0,5.0,5.0)
+    #obstacle_points = [(4.0,4.0),(6.0,4.0),(4.0,6.0),(6.0,6.0)]
+    #obstacles = [Obstacle(obstacle_points,10.0),Obstacle(obstacle_points,10.0)]
+    #fence = Geofence(fence_points)
+    fence = Geofence("/home/mathias/Dropbox/ROBTEK/9.-semester/RMUASD/UASD_share/geofence/testfence.txt", convert_to_utm=False)
+    test_point = (5.0,5.0,100.0)
     print fence.is_point_legal(test_point)
 
    # print obstacle_points

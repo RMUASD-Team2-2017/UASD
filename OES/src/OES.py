@@ -53,7 +53,8 @@ def main():
     external_gps_module.start()
     drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
     onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, gsm_command_queue, rate = 1)
-    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position)
+    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position,
+                             geofencefile="/home/mathias/Dropbox/ROBTEK/9.-semester/RMUASD/UASD_share/geofence/geofence.txt")
     gps_monitor.start()
 
     # GsmHandler

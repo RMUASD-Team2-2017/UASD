@@ -1,6 +1,7 @@
 import threading
 import time
 import logging
+from DroneHandler import DroneHandler
 from GpsMonitor import GpsMonitor
 from ConnectionMonitor import ConnectionMonitor
 
@@ -48,7 +49,7 @@ class OnboardControl(StoppableThread):
         self.signal_queue = drone_handler_signal_queue
 
         self.action_list_terminate = [] # ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
-        self.action_list_land_here = [GpsMonitor.STATE_LOST]
+        self.action_list_land_here = [GpsMonitor.STATE_LOST, GpsMonitor.STATE_GEOFENCE_BREACH]
         self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_TIMEOUT_GSM_LOST,
@@ -109,6 +110,14 @@ class OnboardControl(StoppableThread):
                     self.command_return_to_launch = True
                     logger.info('GSM_COMMAND: Return to launch')
 
+            # We should never override manual mode
+            mode = self.drone_handler.get_mode()
+            if mode == DroneHandler.MANUAL_MODE or mode == None:
+                logger.debug("NO ONBOARD CONTROL: Manual mode or no mode yet")
+                # Sleep to obtain desired rate
+                time.sleep(1.0 / self.rate)
+                # Skip the rest of the loop and start over
+                continue
 
             # Monitor heartbeat from dronekit
             # Lock is not required, just kept for remembrance if we should change something
