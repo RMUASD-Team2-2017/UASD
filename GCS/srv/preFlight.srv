@@ -4,3 +4,5 @@ float64 temperature
 float64 humidity
 float64 windSpeed
 float64 voltage
+float64 latitude
+float64 longitude

@@ -201,6 +201,7 @@ void GCS_CONTROL_CLASS::run()
 					if( upload_mission_service_client.call(mission_upload_msg) && mission_upload_msg.response.result == SUCCESS )
 					{
 						mission_upload_state = UPLOAD_SUCCESS;
+						ROS_INFO("Upload succeeded.");
 					}
 					else
 					{
@@ -217,15 +218,18 @@ void GCS_CONTROL_CLASS::run()
 					outside_humidity = pre_flight_msg.response.humidity;
 					wind_speed = pre_flight_msg.response.windSpeed;
 					battery_voltage = pre_flight_msg.response.voltage;
-
+					// ROS_INFO("Pre-flight info: Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f\tLat: %f\tLon: %f",
+					// 			outside_temperature, outside_humidity, wind_speed, battery_voltage,
+					// 			pre_flight_msg.response.latitude, pre_flight_msg.response.longitude);
 					if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;
 						ROS_INFO("WAIT_FOR_READY");
 					}
 					else
-						ROS_ERROR("Pre-flight check failed. Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f", 
-									outside_temperature, outside_humidity, wind_speed, battery_voltage);
+						ROS_ERROR("Pre-flight check failed.");
+						// ROS_ERROR("Pre-flight check failed. Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f", 
+						// 			outside_temperature, outside_humidity, wind_speed, battery_voltage);
 					state = WAIT_FOR_READY;
 				}
 			}
