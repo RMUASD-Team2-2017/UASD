@@ -94,6 +94,7 @@ class GCS_CONTROL_CLASS
 		int number_of_waypoints = 0;
 		gcs::dockData dock_sensor_data;
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
+		double battery_voltage = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -156,12 +157,12 @@ void GCS_CONTROL_CLASS::run()
 		case IDLE:
 			{
 				if (dock_sensor_data.temperature > 35 ||
-					dock_sensor_data.temperature < 15 ) // TODO check dock_sensor_data.humidity
+					dock_sensor_data.temperature < 15 )
 				{
 					ROS_INFO("Check docking station conditions.");
 				}
 				if (dock_sensor_data.temperature > 50 ||
-					dock_sensor_data.temperature < 0 ) // TODO check dock_sensor_data.humidity
+					dock_sensor_data.temperature < 0 )
 				{
 					ROS_ERROR("Docking station conditions critical.");
 				}
@@ -215,13 +216,16 @@ void GCS_CONTROL_CLASS::run()
 					outside_temperature = pre_flight_msg.response.temperature;
 					outside_humidity = pre_flight_msg.response.humidity;
 					wind_speed = pre_flight_msg.response.windSpeed;
+					battery_voltage = pre_flight_msg.response.voltage;
+
 					if ( pfcheck && pre_flight_msg.response.result == true)
 					{
 						state = WAIT_FOR_READY;
 						ROS_INFO("WAIT_FOR_READY");
 					}
 					else
-						ROS_ERROR("Pre-flight check failed.");
+						ROS_ERROR("Pre-flight check failed. Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f", 
+									outside_temperature, outside_humidity, wind_speed, battery_voltage);
 					state = WAIT_FOR_READY;
 				}
 			}

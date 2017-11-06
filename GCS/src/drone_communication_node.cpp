@@ -203,28 +203,28 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	continueMissionServer = nh.advertiseService("drone_communication/continueMission",&DRONE_COMM_CLASS::continueMissionCallback,this);
 
 	// Service clients
-	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros1/mission/push");
-	clearMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointClear>("/mavros1/mission/clear");
-	armServiceClient = nh.serviceClient<mavros_msgs::CommandBool>("/mavros1/cmd/arming");
-	takeoffServiceClient = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros1/cmd/takeoff");
-	landServiceClient = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros1/cmd/land");
-	startMissionServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros1/cmd/Command");
-	stopMissionServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros1/cmd/Command");
-	setParameterServiceClient = nh.serviceClient<mavros_msgs::ParamSet>("/mavros1/param/set");
-	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros1/set_mode");
-	getParameterServiceClient = nh.serviceClient<mavros_msgs::ParamGet>("/mavros1/param/get");
+	uploadMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPush>("/mavros/mission/push");
+	clearMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointClear>("/mavros/mission/clear");
+	armServiceClient = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+	takeoffServiceClient = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
+	landServiceClient = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
+	startMissionServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros/cmd/Command");
+	stopMissionServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros/cmd/Command");
+	setParameterServiceClient = nh.serviceClient<mavros_msgs::ParamSet>("/mavros/param/set");
+	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+	getParameterServiceClient = nh.serviceClient<mavros_msgs::ParamGet>("/mavros/param/get");
 
 	// Publishers
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
 	dronePositionPublisher = nh.advertise<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1);
 	statePublisher = nh.advertise<mavros_msgs::State>("/drone_communication/droneState",1);
 	missionStatusPublisher = nh.advertise<mavros_msgs::WaypointList>("/drone_communication/missionState",1);
-	batteryStatusPublisher = nh.advertise<mavros_msgs::BatteryStatus>("drone_communication/batteryStatus",1);
+	batteryStatusPublisher = nh.advertise<mavros_msgs::BatteryStatus>("/drone_communication/batteryStatus",1);
 	// Subscribers
-	stateSubscriber = nh.subscribe("/mavros1/state",1,&DRONE_COMM_CLASS::stateCallback,this);
-	globalPositionSubscriber = nh.subscribe("/mavros1/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
-	missionStatusSubscriber = nh.subscribe("/mavros1/mission/waypoints",1,&DRONE_COMM_CLASS::missionStatusSubscriberCallback, this);
-	batteryStatusSubscriber = nh.subscribe("/mavros1/battery",1,&DRONE_COMM_CLASS::batteryStatusSubscriberCallback,this);
+	stateSubscriber = nh.subscribe("/mavros/state",1,&DRONE_COMM_CLASS::stateCallback,this);
+	globalPositionSubscriber = nh.subscribe("/mavros/global_position/global",1,&DRONE_COMM_CLASS::globalPositionCallback,this);
+	missionStatusSubscriber = nh.subscribe("/mavros/mission/waypoints",1,&DRONE_COMM_CLASS::missionStatusSubscriberCallback, this);
+	batteryStatusSubscriber = nh.subscribe("/mavros/battery",1,&DRONE_COMM_CLASS::batteryStatusSubscriberCallback,this);
 
 	heartbeatTimestamp = ros::Time::now().toSec();
 }
@@ -266,6 +266,7 @@ void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::Waypoi
 void DRONE_COMM_CLASS::batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg)
 {
 	batteryStatusPublisher.publish(msg);
+	ROS_INFO("Battery status received, voltage is %f", msg.voltage);
 }
 
 void DRONE_COMM_CLASS::checkHeartbeat()
