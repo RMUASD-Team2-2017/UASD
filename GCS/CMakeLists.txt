@@ -29,7 +29,7 @@ add_definitions (${GeographicLib_DEFINITIONS})
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -58,13 +58,19 @@ add_definitions (${GeographicLib_DEFINITIONS})
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  deploy_request.msg
+  communicationStatus.msg
   path.msg
   waypoint.msg
+  dockData.msg
+  setPreflightData.msg
+  toDroneData.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
+  preFlight.srv
   planPath.srv
   uploadMission.srv
   clearMission.srv
@@ -74,6 +80,10 @@ add_service_files(
   land.srv
   startMission.srv
   stopMission.srv
+  openDock.srv
+  returnToLaunch.srv
+  loiter.srv
+  continueMission.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -120,6 +130,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  CATKIN_DEPENDS
+  message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES ground_control_station
 #  CATKIN_DEPENDS roscpp rospy std_msgs
@@ -166,6 +178,7 @@ target_link_libraries(gcs_control_node ${catkin_LIBRARIES})
 target_link_libraries(docking_station_node ${catkin_LIBRARIES})
 target_link_libraries(drone_communication_node ${catkin_LIBRARIES})
 target_link_libraries(path_planner_node ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
+
 
 #############
 ## Install ##
