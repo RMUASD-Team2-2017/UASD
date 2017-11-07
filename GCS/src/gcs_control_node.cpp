@@ -92,7 +92,9 @@ class GCS_CONTROL_CLASS
 		int current_waypoint = 0;
 		int last_waypoint = 0;
 		int number_of_waypoints = 0;
-		gcs::dockData dock_sensor_data;
+		// gcs::dockData dock_sensor_data;
+		float dock_temperature = 0, dock_humidity = 0;
+		std::vector<double> dock_voltage = {0, 0, 0, 0};
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 		double battery_voltage = 0;
 
@@ -156,16 +158,20 @@ void GCS_CONTROL_CLASS::run()
 	{
 		case IDLE:
 			{
-				if (dock_sensor_data.temperature > 35 ||
-					dock_sensor_data.temperature < 15 )
+				if ( dock_temperature > 35 ||
+					 dock_temperature< 15 )
 				{
 					ROS_INFO("Check docking station conditions.");
 				}
-				if (dock_sensor_data.temperature > 50 ||
-					dock_sensor_data.temperature < 0 )
+				if ( dock_temperature > 50 ||
+					 dock_temperature < 0 )
 				{
 					ROS_ERROR("Docking station conditions critical.");
 				}
+				// ROS_INFO("Battery cell voltages:\t%f\t%f\t%f\t%f",
+				// 			dock_voltage[0], dock_voltage[1],
+				// 			dock_voltage[2], dock_voltage[3]);
+
 				// Continuosly monitor drone and docking station
 				ROS_INFO("IDLE");
 			}
@@ -173,8 +179,6 @@ void GCS_CONTROL_CLASS::run()
 		case RECEIVED_DISTRESS_CALL:
 			{
 				ROS_INFO("RECEIVED_DISTRESS_CALL");
-
-				// Start preflight check
 
 				// Start path planning
 				gcs::planPath path_request;
@@ -184,9 +188,11 @@ void GCS_CONTROL_CLASS::run()
 				path_request.request.goal.lat = deploy_request.point.lat;
 				path_request.request.goal.lon = deploy_request.point.lon;
 				path_request.request.goal.alt = 0;
-				if ( !plan_path_service_client.call(path_request) )
+				if ( !plan_path_service_client.call(path_request) ) {
 					ROS_ERROR("Plan path failed");
-				state = PREPARE;
+					// state unchanged
+				}
+				else state = PREPARE;
 			}
 			break;
 		case PREPARE:
@@ -230,7 +236,7 @@ void GCS_CONTROL_CLASS::run()
 						ROS_ERROR("Pre-flight check failed.");
 						// ROS_ERROR("Pre-flight check failed. Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f", 
 						// 			outside_temperature, outside_humidity, wind_speed, battery_voltage);
-					state = WAIT_FOR_READY;
+					//state = WAIT_FOR_READY;
 				}
 			}
 			break;
@@ -249,13 +255,14 @@ void GCS_CONTROL_CLASS::run()
 			break;
 		case DEPLOY:
 			{
+				// TODO: See why we go here after killing the docking station node.
 				ROS_INFO("DEPLOY");
 				//If everything ok -> arm the drone
 				gcs::startMission start_msg;
 				if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
 				{
 					state = FLYING;
-				std_msgs::String msg;
+					std_msgs::String msg;
 					msg.data = "transport";
 					uav_state_publisher.publish(msg);
 					ROS_INFO("FLYING");
@@ -341,7 +348,11 @@ void GCS_CONTROL_CLASS::missionStateSubscriberCallback(const mavros_msgs::Waypoi
 
 void GCS_CONTROL_CLASS::dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg)
 {
-	dock_sensor_data = *msg;
+	gcs::dockData dock_sensor_data = *msg;
+	dock_temperature = dock_sensor_data.temperature;
+	dock_humidity = dock_sensor_data.humidity;
+	dock_voltage = dock_sensor_data.voltage;
+	// dock_sensor_data = *msg;
 }
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()

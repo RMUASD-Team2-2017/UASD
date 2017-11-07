@@ -23,6 +23,7 @@ class DOCKING_STATION_CLASS
 
         float getTemperature();
         float getHumidity();
+        std::vector<double> getVoltage();
         bool openDockingStation();
 
 };
@@ -67,11 +68,23 @@ float DOCKING_STATION_CLASS::getHumidity()
     return 5.2;    // Dummy humidity
 }
 
+std::vector<double> DOCKING_STATION_CLASS::getVoltage()
+{
+    std::vector<double> out;
+    out.push_back(4.2);
+    out.push_back(4.2);
+    out.push_back(4.2);
+    out.push_back(0);
+
+    return out;  // Dummy voltage
+}
+
 void DOCKING_STATION_CLASS::publicData()
 {
     gcs::dockData data;
     data.temperature = getTemperature();
     data.humidity = getHumidity();
+    data.voltage = getVoltage();
     pub.publish(data);
 }
 
