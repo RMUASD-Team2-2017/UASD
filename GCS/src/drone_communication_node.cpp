@@ -17,6 +17,7 @@
 #include "mavros_msgs/WaypointList.h"
 #include "mavros_msgs/BatteryStatus.h"
 #include "mavros_msgs/ParamGet.h"
+#include "mavros_msgs/WaypointPull.h"
 
 
 #include "mavlink_defines.h"	// For mavlink defines not accessible in other files
@@ -165,6 +166,7 @@ private:
 	ros::ServiceClient setParameterServiceClient;
 	ros::ServiceClient setModeServiceClient;
 	ros::ServiceClient getParameterServiceClient;
+	ros::ServiceClient pullMissionServiceClient;
 
 	// Published topics
 	ros::Publisher communicationStatusPublisher;
@@ -213,6 +215,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	setParameterServiceClient = nh.serviceClient<mavros_msgs::ParamSet>("/mavros/param/set");
 	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 	getParameterServiceClient = nh.serviceClient<mavros_msgs::ParamGet>("/mavros/param/get");
+	pullMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPull>("mavros/mission/pull");
 
 	// Publishers
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
@@ -926,8 +929,22 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 		{
 	    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
-				missionReceived = true;
-				res.result = SUCCESS;
+
+			int pull_trials = 0;
+			bool pull_ok = false;
+			while(!pull_ok && pull_trials < 10)
+			{
+				ROS_INFO("Checking mission attempt: %i",pull_trials+1);
+				mavros_msgs::WaypointPull pullMissionMsg;
+				if(pullMissionServiceClient.call(pullMissionMsg) && pullMissionMsg.response.success && pullMissionMsg.response.wp_received == numberOfWaypoints)
+				{
+					missionReceived = true;
+					pull_ok = true;
+					res.result = SUCCESS;
+					ROS_INFO("Mission check passed");
+				}
+				ros::Duration(1.0).sleep();
+			}
 		}
 		else
 			upload_trials += 1;
