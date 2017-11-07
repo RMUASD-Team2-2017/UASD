@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include <limits>
+#include <string>
+#include <fstream>
 #include "geofence.h"
 
 // ROS
@@ -16,11 +18,19 @@ struct Node
         this->coordinate = coordinate;
     }
 
-    void print_node()
+    Node(point coordinate, int node_id)
     {
-        std::cout << "Lat: " << coordinate.lat << " Lon: " << coordinate.lon << std::endl;
+        this->coordinate = coordinate;
+        this->node_id = node_id;
     }
 
+    void print_node()
+    {
+        std::cout << "Node id: " << node_id << std::endl;
+        std::cout << "Lat: " << coordinate.lat << " Lon: " << coordinate.lon << std::endl;
+        std::cout << "Neighbors: " << neighbors.size() << std::endl;
+    }
+    int node_id;
     point coordinate;
     Node *parent = nullptr;
     std::vector<Node*> neighbors;
@@ -35,15 +45,16 @@ class Path_planner
         gcs::path plan_path(point start, point goal);
         void set_nodes(std::vector<point> points);
         void print_nodes();
+        void export_as_csv(std::string filename);
 
     private:
         void connect_all_nodes();
-        void shrink_nodes(double shrink_factor);
+        void shrink_polygon(double shrink_factor);
         std::vector<Node*> a_star(Node *start, Node *goal);
         double heuristic_dist(Node *start, Node *goal);
         Node* get_node_with_lowest_fscore(std::vector<Node*> &openset);
         std::vector<Node*> reconstruct_path(Node *current);
-        void remove_node(std::vector<Node*> openset, Node* node);
+        void remove_node(std::vector<Node*> &openset, Node* node);
         bool is_node_in_set(std::vector<Node*> set, Node* node);
         gcs::waypoint convert_node_to_waypoint(Node *node);
         geofence *fence;

@@ -7,12 +7,15 @@
 
 // Custom
 #include "geofence.h"
+#include "path_planner.h"
 
 // ROS
 #include <ros/ros.h>
 #include "gcs/planPath.h"
 #include "gcs/waypoint.h"
 #include "gcs/path.h"
+
+#define TEST 1
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -107,7 +110,7 @@ int main(int argc, char** argv)
 {
 	ros::init(argc, argv, VALUE_AS_STRING(PATH_PLANNER_CLASS));
 	ros::NodeHandle n;
-  PATH_PLANNER_CLASS planner(n);
+    PATH_PLANNER_CLASS planner(n);
 
 // std::ifstream geofence_file ("/home/mathias/Desktop/geofence_test.csv");
 // std::cout << geofence_file.good() << geofence_file.eof() << geofence_file.fail() << geofence_file.bad() << std::endl;
@@ -183,9 +186,63 @@ int main(int argc, char** argv)
 
 // std::cout << "Finished" << std::endl;
 
-geofence fence_test;
-fence_test.set_fence("/home/mathias/Desktop/geofence_test.csv");
-fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
+if(TEST)
+{
+    geofence fence_test;
+    fence_test.set_max_altitude(200.0);
+    //fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/google_fence1.csv");
+    fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/geofence.txt", true);
+    Path_planner plan(fence_test);
+    plan.set_nodes(fence_test.get_fence());
+
+    
+    plan.export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");   // Debugging
+
+    point start, goal, ok_point, p_inside, p_outside, fence_point;
+    /*start.lat = 55.558944;
+    start.lon = 10.109823;
+    goal.lat = 55.559004; //55.559056;
+    goal.lon = 10.109658; //10.109683;
+    ok_point.lat = 55.558889;
+    ok_point.lon = 10.109714;
+    p_inside.lat = 55.05;
+    p_inside.lon = 10.05;
+    p_outside.lat =  55.559113;
+    p_outside.lon =  10.110014;
+    fence_point.lat = 55.558841;
+    fence_point.lon = 10.109575;
+    fence_test.geodetic_to_UTM(start);
+    fence_test.geodetic_to_UTM(goal);
+    fence_test.geodetic_to_UTM(ok_point);
+    fence_test.geodetic_to_UTM(fence_point);*/
+    //std::cout << "HER " <<  start.lat << " " << start.lon << std::endl;
+    //fence_test.UTM_to_geodetic(start);
+    //std::cout << start.lat << " " << start.lon << std::endl;
+    /*
+    std::cout << "DEBUGGING edge legal: " << fence_test.edge_legal(start, ok_point) << std::endl;
+    std::cout << "Point legal: " << fence_test.point_legal(ok_point, UTM);*/
+
+    // Start and goal on the real geofence
+    start.lat = 55.560531;
+    start.lon = 10.113121;
+    goal.lat =  55.565000;
+    goal.lon =  10.118309;
+    fence_test.geodetic_to_UTM(start);
+    fence_test.geodetic_to_UTM(goal);
+
+
+    gcs::path thepath = plan.plan_path(start,goal);
+    std::cout << "\nPath planning has finished!" << std::endl;
+
+    /*
+    for(unsigned int i = 0; thepath.path.size(); i++)
+    {
+        std::cout << thepath.path[i].lat << std::endl;
+    }*/
+}
+
+
+//fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
 
 
 // // GEOFENCE TESTING!

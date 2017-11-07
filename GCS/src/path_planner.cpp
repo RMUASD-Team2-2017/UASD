@@ -3,24 +3,23 @@
 #include <algorithm>
 #include <iostream>
 
-#define DEBUGGING 1
-#define SHRINK_FACTOR 0.70F
+#define DEBUGGING true
+#define SHRINK_FACTOR 0.90F
 
 Path_planner::Path_planner(geofence &fence)
 {
     this->fence = &fence;
 }
 
-// Missing: Change this function to fit the geofence so that it gets the points from there.
 void Path_planner::set_nodes(std::vector<point> points)
 {
     for(unsigned int i = 0; i<points.size(); i++)
     {
-        nodes.push_back(Node(points[i]));
+        nodes.push_back(Node(points[i], i+1));
     }
 }
 
-// Missing: Assumes that the coordinates from the geofence are UTM? Should the altitude be included?
+// Missing: Should the altitude be included?
 double Path_planner::heuristic_dist(Node *start, Node *goal)
 {
     return sqrt(pow((start->coordinate.lat - goal->coordinate.lat),2) + pow((start->coordinate.lon - goal->coordinate.lon),2)
@@ -43,7 +42,7 @@ Node* Path_planner::get_node_with_lowest_fscore(std::vector<Node*> &openset)
     return result;
 }
 
-void Path_planner::remove_node(std::vector<Node*> openset, Node* node)
+void Path_planner::remove_node(std::vector<Node*> &openset, Node* node)
 {
     for(unsigned int i = 0; i<openset.size(); i++)
     {
@@ -68,19 +67,22 @@ bool Path_planner::is_node_in_set(std::vector<Node*> set, Node* node)
 // Connect all the nodes which are allowed
 void Path_planner::connect_all_nodes()
 {
+    int k = 0;
     for(unsigned int i = 0; i<nodes.size(); i++)
     {
         for(unsigned int j = 0; j<nodes.size(); j++)
         {
-            //std::cout << "legal neighbors: " << fence->edge_legal(nodes[i].coordinate, nodes[j].coordinate) << std::endl;
-            if(i != j && fence->edge_legal(nodes[i].coordinate, nodes[j].coordinate))   // Missing: Virker edge_legal?
+            //std::cout << "connected: " << k++ << std::endl;
+            if(i != j && fence->edge_legal(nodes[i].coordinate, nodes[j].coordinate))   //fence->edge_legal(nodes[i].coordinate, nodes[j].coordinate)
             {
                 nodes[i].neighbors.push_back(&nodes[j]);
             }
         }
+        //std::cout << "Neighbors: " << nodes[i].neighbors.size() << std::endl;
     }
 }
 
+// Creates a vector containing the path of nodes from start to goal
 std::vector<Node*> Path_planner::reconstruct_path(Node *current)
 {
     std::vector<Node*> final_path = {current};
@@ -91,6 +93,7 @@ std::vector<Node*> Path_planner::reconstruct_path(Node *current)
     return final_path;
 }
 
+// A* algorithm
 std::vector<Node*> Path_planner::a_star(Node *start, Node *goal)
 {
     std::vector<Node*> closedset;
@@ -98,9 +101,6 @@ std::vector<Node*> Path_planner::a_star(Node *start, Node *goal)
 
     start->gscore = 0;
     start->fscore = heuristic_dist(start, goal);
-    if(DEBUGGING) std::cout << "Start lat: " << start->coordinate.lat << " Start lon: " << start->coordinate.lon << std::endl;
-    if(DEBUGGING) std::cout << "Goal lat: " << goal->coordinate.lat << " Goal lon: " << goal->coordinate.lon << std::endl;
-    if(DEBUGGING) std::cout << "Distance: " << start->fscore << std::endl;
 
     while(openset.size() != 0)
     {
@@ -111,8 +111,7 @@ std::vector<Node*> Path_planner::a_star(Node *start, Node *goal)
         remove_node(openset, current);
         closedset.push_back(current);
 
-        if(DEBUGGING) current->print_node();
-        if(DEBUGGING) std::cout << "Number of neighbors: " << current->neighbors.size() << std::endl;
+        //if(DEBUGGING) current->print_node();    // Debugging
 
         for(unsigned int i = 0; i<current->neighbors.size(); i++)
         {
@@ -131,11 +130,10 @@ std::vector<Node*> Path_planner::a_star(Node *start, Node *goal)
             current->neighbors[i]->gscore = tentative_gscore;
             current->neighbors[i]->fscore = tentative_gscore + heuristic_dist(current->neighbors[i], goal);
         }
-        if(DEBUGGING) std::cout << "Failed" << std::endl;
-        return std::vector<Node*>();    // Returns empty vector when pathplanning fails
-        // Missing make sure this works
     }
-
+    if(DEBUGGING)  ROS_INFO("A* pathplanner failed in finding a path!");
+    return std::vector<Node*>();    // Returns empty vector when pathplanning fails
+    // Missing make sure this works
 }
 
 gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
@@ -149,40 +147,33 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
 
 gcs::path Path_planner::plan_path(point start, point goal)
 {
-    typedef std::numeric_limits< double > dbl;  // DEBUGGING
-    std::cout.precision(dbl::max_digits10);
-    print_nodes();
-    shrink_nodes(SHRINK_FACTOR);
-    std::cout << "\n";
-    print_nodes();
-    //nodes.push_back(Node(start));
-    //nodes.push_back(Node(goal));
+    if(DEBUG) std::cout << "Shrinking the polygon..." << std::endl;
+    shrink_polygon(SHRINK_FACTOR);
+    nodes.push_back(Node(start, -1));
+    nodes.push_back(Node(goal, -2));
 
-    /*
-    fence->UTM_to_geodetic(nodes[0].coordinate);
-    fence->UTM_to_geodetic(nodes[1].coordinate);
-    std::cout << "Point1: " << nodes[0].coordinate.lat << " " << nodes[0].coordinate.lon << std::endl;
-    std::cout << "Point2: " << nodes[1].coordinate.lat << " " << nodes[1].coordinate.lon << std::endl;
-    std::cout << "Point legal: " << fence->point_legal(nodes[0].coordinate) << std::endl;
-    std::cout << "Point legal: " << fence->point_legal(nodes[1].coordinate) << std::endl;*/
-    std::cout << "DEBUGGING edge legal: " << fence->edge_legal(nodes[0].coordinate, nodes.back().coordinate) << std::endl;
+    //std::cout << "Is start point inside: " << fence->point_legal(start, UTM) << std::endl;
 
+    if(DEBUG) std::cout << "Connecting all nodes..." << std::endl;
     connect_all_nodes();    // Connect all nodes with each other
 
     // Run a-star from start to goal
+    if(DEBUG) std::cout << "A* pathplanning is started..." << std::endl;
     std::vector<Node*> path_nodes = a_star(&nodes[nodes.size() - 2], &nodes.back());
+    if(DEBUG) std::cout << "A* pathplanning is finished. Printing the path..." << std::endl;
 
     // Convert nodes into a path of waypoints
     gcs::path waypoint_path;
     for(unsigned int i = 0; i<path_nodes.size(); i++)
     {
+        if(DEBUGGING) path_nodes[i]->print_node();
         waypoint_path.path.push_back(convert_node_to_waypoint(path_nodes[i]));
     }
 
     return waypoint_path;   // Missing: check if this works OBS fix so it returns lat and long instead of UTM
 }
 
-void Path_planner::shrink_nodes(double shrink_factor)
+void Path_planner::shrink_polygon(double shrink_factor)
 {
     // Find polygon centroid
     point centroid;
@@ -197,18 +188,33 @@ void Path_planner::shrink_nodes(double shrink_factor)
     centroid.lon = centroid.lon / nodes.size();
 
     /*
+    std::cout << "centroid: " << centroid.lat << " " << centroid.lon << std::endl;
     typedef std::numeric_limits< double > dbl;  // DEBUGGING
     std::cout.precision(dbl::max_digits10);
-    std::cout << "centroid: " << centroid.lat << " " << centroid.lon << std::endl;
-    */
+    std::cout << "DEBUGGING START: " << std::endl;*/
     // Translate to origin, scale/shrink, translate back
     for(unsigned int i = 0; i<nodes.size(); i++)
     {
         nodes[i].coordinate.lat = (nodes[i].coordinate.lat - centroid.lat)*shrink_factor + centroid.lat;
         nodes[i].coordinate.lon = (nodes[i].coordinate.lon - centroid.lon)*shrink_factor + centroid.lon;
-        /*std::cout << "1: " << centroid.lon << std::endl;
-        std::cout << "2: " << nodes[i].coordinate.lon << std::endl;
-        std::cout << "3: " << (nodes[i].coordinate.lon - centroid.lon) << std::endl;*/
+        //if(DEBUGGING) nodes[i].print_node();
+    }
+}
+
+void Path_planner::export_as_csv(std::string filename)
+{
+    std::ofstream csvfile(filename);
+    if (csvfile.is_open())
+    {
+        csvfile << "Name,Description,Latitude,Longitude\n";
+        for(unsigned int i = 0; i<nodes.size(); i++)
+        {
+            point temp_point = nodes[i].coordinate;
+            fence->UTM_to_geodetic(temp_point);
+            csvfile << i+1 << ",none," << temp_point.lat << "," << temp_point.lon << "\n";
+        }
+
+        csvfile.close();
     }
 }
 
@@ -216,7 +222,6 @@ void Path_planner::print_nodes()
 {
     for(unsigned int i = 0; i<nodes.size(); i++)
     {
-        std::cout << "lat: " << nodes[i].coordinate.lat << std::endl;
-        std::cout << "lon: " << nodes[i].coordinate.lon << std::endl;
+        nodes[i].print_node();
     }
 }

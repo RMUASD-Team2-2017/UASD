@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
   mavros_msgs
+
 )
 
 ## System dependencies are found with CMake's conventions
@@ -164,7 +165,8 @@ include_directories(
 add_executable(gcs_control_node src/gcs_control_node.cpp)
 add_executable(docking_station_node src/docking_station_node.cpp)
 add_executable(drone_communication_node src/drone_communication_node.cpp)
-add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp)
+add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp src/path_planner.cpp)
+#add_executable(path_planner src/path_planner.cpp src/geofence.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -172,13 +174,14 @@ add_dependencies(gcs_control_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_E
 add_dependencies(docking_station_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(drone_communication_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} std_msgs mavros_msgs sensor_msgs gcs_generate_messages_cpp)
 add_dependencies(path_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} std_msgs mavros_msgs gcs_generate_messages_cpp)
+#add_dependencies(path_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(gcs_control_node ${catkin_LIBRARIES})
 target_link_libraries(docking_station_node ${catkin_LIBRARIES})
 target_link_libraries(drone_communication_node ${catkin_LIBRARIES})
 target_link_libraries(path_planner_node ${catkin_LIBRARIES} ${GeographicLib_LIBRARIES})
-
+#target_link_libraries(path_planner ${catkin_LIBRARIES})
 
 #############
 ## Install ##

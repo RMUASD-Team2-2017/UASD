@@ -12,12 +12,13 @@ geofence::~geofence()
 // It is kept just to get the idea, until we can get it from the server.
 void geofence::set_fence(std::string geofence_path)
 {
+
     std::ifstream geofence_file (geofence_path);
     std::string fieldValue, lat, lon;
     std::getline  (geofence_file,fieldValue,'\n'); // Skip first line
     int pointCount = 1;
     std::vector<point> fence_points;
-    while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) ) 
+    while ( geofence_file.good() && std::getline ( geofence_file, fieldValue, ',' ) )
     {
 	    point temp_point;
         // Skip first field in if statement (to ensure it does not repeat last line)
@@ -40,6 +41,42 @@ void geofence::set_fence(std::string geofence_path)
     }
 }
 
+void geofence::set_fence_csv(std::string geofence_path, bool inversed)
+{
+    std::ifstream geofence_file (geofence_path);
+    std::string fieldValue, lat, lon;
+    std::vector<point> fence_points;
+
+    while ( geofence_file.good())
+    {
+	    point temp_point;
+        std::getline ( geofence_file, lat, ',' ); 			// Read Lat
+        std::getline ( geofence_file, lon, '\n' ); 			// Read lon
+        if(geofence_file.eof()) // Makes sure we dont read the last line twice
+            break;
+        if(inversed)
+        {
+            temp_point.lon = std::atof(lat.c_str());
+            temp_point.lat = std::atof(lon.c_str());
+        }
+        else
+        {
+            temp_point.lat = std::atof(lat.c_str());
+            temp_point.lon = std::atof(lon.c_str());
+        }
+        fence_points.push_back(temp_point);
+    }
+    geofence_file.close();
+    set_fence(fence_points);
+
+    if(DEBUG)
+    {
+        std::cout << "Loaded geofence with points: lat lon" << std::endl;
+        for( int i = 0; i < fence_points.size(); i++)
+	        std::cout << (i+1) << ": " << fence_points[i].lat << " " << fence_points[i].lon << std::endl;
+    }
+}
+
 void geofence::set_obstacles(std::string obstacle_path)
 {
     std::ifstream obstacle_file (obstacle_path);
@@ -49,7 +86,7 @@ void geofence::set_obstacles(std::string obstacle_path)
     {
         std::getline( obstacle_file, pointsInObstacleStr, '\n' );
         int pointsInObstacle = std::atoi(pointsInObstacleStr.c_str());
-        //std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;	
+        //std::cout << "PointsInObstacle: " << pointsInObstacleStr << " " << pointsInObstacle << std::endl;
         obstacle temp_obstacle;
         temp_obstacle.height = std::atof(height.c_str());
         for( int i = 0; i < pointsInObstacle; i++) // For all points in this obstacle
@@ -114,12 +151,12 @@ void geofence::set_max_altitude(double altitude)
   max_altitude = altitude;
 }
 
-bool geofence::point_legal(point test_point)
+bool geofence::point_legal(point test_point, coordtype_t coordtype)
 {
   if(test_point.alt > max_altitude )
     return false;
 
-  if(USE_UTM) geodetic_to_UTM(test_point);
+  if(coordtype == LatLon) geodetic_to_UTM(test_point);
   bool point_ok = false;
   // Check geofence
   point_ok = inside_polygon(fence, test_point);
@@ -164,15 +201,52 @@ bool geofence::edge_legal(point p1, point p2)
       p_temp.lat = y_temp;
       p_temp.alt = z_temp;
       //ROS_INFO("p_temp: %f,%f,%f",p_temp.lon,p_temp.lat,p_temp.alt);
-      result = point_legal(p_temp);
+      result = point_legal(p_temp, UTM);
       //ROS_INFO("step: %i result: %i",step,result);
       step++;
     }
   }
   else
-    result = point_legal(p1) && point_legal(p2);
+    result = point_legal(p1, UTM) && point_legal(p2, UTM);
 
   return result;
+}
+
+// Binary edge collision detector
+bool geofence::edge_legal_bin(point p1, point p2)
+{
+   // Make vector between points
+   double vec_x = p2.lon - p1.lon;
+   double vec_y = p2.lat - p1.lat;
+   double vec_z = p2.alt - p1.alt;
+   double length = std::sqrt(vec_x*vec_x + vec_y*vec_y + vec_z*vec_z);
+
+   int n = length/STEP_SIZE;
+   int levels = ceil(log2(n));
+
+   for(int i = 1; i <= levels; i++)
+   {
+       int steps = pow(2.0,i-1);
+
+       double lon_step = vec_x/steps;
+       double lat_step = vec_y/steps;
+       double alt_step = vec_z/steps;
+
+       for(int j = 1; j <= steps; j++)
+       {
+           point p_temp;
+
+           p_temp.lon = p1.lon + (j - 0.5)*lon_step;
+           p_temp.lat = p1.lat + (j - 0.5)*lat_step;
+           p_temp.alt = p1.alt + (j - 0.5)*alt_step;
+
+           if(!point_legal(p_temp, UTM))
+           {
+               return false;
+           }
+       }
+   }
+   return true;
 }
 
 bool geofence::inside_polygon(std::vector<point> _fence, point test_point)
@@ -238,6 +312,31 @@ bool geofence::geodetic_to_UTM(point &p)
   return true;
 }
 
+bool geofence::UTM_to_geodetic(point &p)
+{
+  if(DEBUG) ROS_INFO("UTM_zone: %i", UTM_zone);
+  double lon0 = (((double)UTM_zone -1)*6-180+3);
+  if(DEBUG) ROS_INFO("lon0: %f",lon0);
+  try
+  {
+    GeographicLib::TransverseMercator proj(GeographicLib::Constants::WGS84_a(), GeographicLib::Constants::WGS84_f(), GeographicLib::Constants::UTM_k0());
+    point local_point;
+    if(DEBUG) ROS_INFO("geodetic: %f,%f", p.lat, p.lon);
+    p.lat -= false_easting;
+    proj.Reverse(lon0,p.lat,p.lon,local_point.lat,local_point.lon);
+    if(DEBUG) ROS_INFO("geodetic_to_UTM: %f,%f",local_point.lat,local_point.lon);
+
+    p = local_point;
+  }
+  catch (const std::exception& e){
+    std::stringstream error;
+    error << e.what();
+    ROS_ERROR("Exception %s",error.str().c_str());
+    return false;
+  }
+  return true;
+}
+
 bool geofence::self_test()
 {
   if(DEBUG) ROS_INFO("Starting selftest");
@@ -285,11 +384,11 @@ bool geofence::self_test()
 
   // Perform inclusion tests
   if(DEBUG) ROS_INFO("Testing point inside");
-  bool inside_test = point_legal(p_inside);
+  bool inside_test = point_legal(p_inside, LatLon);
   if(!inside_test)
     ROS_ERROR("Inside test failed");
   if(DEBUG) ROS_INFO("Testing point outside");
-  bool outside_test = !point_legal(p_outside); // NOTE: Negation becase the point should be outside
+  bool outside_test = !point_legal(p_outside, LatLon); // NOTE: Negation becase the point should be outside
   if(!outside_test)
     ROS_ERROR("Outside test failed");
 
@@ -340,4 +439,9 @@ bool geofence::test_UTM()
     ROS_ERROR("geodetic test: ERROR. Expected %f,%f but got %f,%f",p_UTM_expected.lat, p_UTM_expected.lon, p.lat, p.lon);
 
   return (ret_val == 0);
+}
+
+std::vector<point> geofence::get_fence()
+{
+    return fence;
 }
