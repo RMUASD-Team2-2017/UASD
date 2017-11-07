@@ -14,3 +14,12 @@
 #define NAV_RETURN_TO_LAUNCH 20
 #define NAV_LAND 21
 #define NAV_TAKEOFF 22
+#define DO_CHANGE_SPEED 178
+
+
+// nav speed types
+#define AIRSPEED 0
+#define GROUNDSPEED 1
+#define ABSOLUTE 0
+#define RELATIVE 1
+
