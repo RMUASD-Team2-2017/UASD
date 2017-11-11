@@ -22,6 +22,10 @@
     <center><a href="../">Request AED</a> - <a href="show_drones.php">Drones</a> - <b>Requests</b></center>
     <center><h1>AED Requests</h1></center>';
 
+    //echo '<div style="width:50%; float:left;">';
+    //echo '</div>';
+    //echo '<div style="clear:both;"></div>';
+
     /* SHOW UNAPPROVED */
     $sql = "SELECT * FROM `AED_requests` WHERE  `approved` =0 ORDER BY  `int_id` DESC";
     $result = mysqli_query($con, $sql);          //query
@@ -30,7 +34,6 @@
     <thead>
     <tr>
     <th>Request #</th>
-    <th>Request ID</th>
     <th>Time and date</th>
     <th>Action</th>
     </tr>
@@ -48,9 +51,11 @@
         echo '<tr style="background-color: #FF0000;">';
 
         echo "<td>" . $row['int_id'] . "</td>";
-        echo "<td>" . $row['request_id'] . "</td>";
-        echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        echo '<td><a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '&page=show_requests.php' .'">Approve</a> - <a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '&page=show_requests.php' . '">Reject</a> - <a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
+        echo '<td style="padding-top:3px;">';
+        echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '&page=show_requests.php' .'"><img border="0" alt="Approve" src="approve_icon.png" width="24" height="24" style="margin-left:3px;"></a>';
+        echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '&page=show_requests.php' . '"><img border="0" alt="Reject" src="reject_icon.png" width="24" height="24" style="margin-left:10px;"></a>';
+        echo '<a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:10px;"></a></td>';
         echo "</tr>";
     }
     echo "</tbody>
@@ -64,7 +69,6 @@
     <thead>
     <tr>
     <th>Request #</th>
-    <th>Request ID</th>
     <th>Assigned UAV ID</th>
     <th>Time and date</th>
     <th>ETA</th>
@@ -78,19 +82,18 @@
         echo '<tr style="background-color: #FFFF00;">';
 
         echo "<td>" . $row['int_id'] . "</td>";
-        echo "<td>" . $row['request_id'] . "</td>";
         if ($row['drone_id'] == 0) {
             echo "<td>None</td>";
         } else {
             echo "<td>" . $row['drone_id'] . "</td>";
         }
-        echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
+        echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
         if ($row['eta'] == 0) {
             echo "<td>None</td>";
         } else {
             echo "<td>" . date('Y-m-d H:i:s', strtotime($row['eta'])) . "</td>";
         }
-        echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo '<td style="padding-top:3px;"><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:3px;"></a></td>';
         echo "</tr>";
     }
     echo "</tbody>
@@ -104,7 +107,6 @@
     <thead>
     <tr>
     <th>Request #</th>
-    <th>Request ID</th>
     <th>Assigned UAV ID</th>
     <th>Time and date</th>
     <th>Action</th>
@@ -117,14 +119,13 @@
         echo '<tr style="background-color: #90EE90;">';
 
         echo "<td>" . $row['int_id'] . "</td>";
-        echo "<td>" . $row['request_id'] . "</td>";
         if ($row['drone_id'] == 0) {
             echo "<td>None</td>";
         } else {
             echo "<td>" . $row['drone_id'] . "</td>";
         }
-        echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
+        echo '<td style="padding-top:3px;"><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:3px;"></a></td>';
         echo "</tr>";
     }
     echo "</tbody>
@@ -139,7 +140,6 @@
     <thead>
     <tr>
     <th>Request #</th>
-    <th>Request ID</th>
     <th>Time and date</th>
     <th>Action</th>
     </tr>
@@ -151,9 +151,8 @@
         echo '<tr style="background-color: #CCCCCC;">';
 
         echo "<td>" . $row['int_id'] . "</td>";
-        echo "<td>" . $row['request_id'] . "</td>";
-        echo "<td>" . date('Y-m-d H:i:s', strtotime($row['time'])) . "</td>";
-        echo '<td><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '">See more</a></td>';
+        echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
+        echo '<td style="padding-top:3px;"><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:3px;"></a></td>';
         echo "</tr>";
     }
     echo "</tbody>

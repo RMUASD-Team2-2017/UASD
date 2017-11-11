@@ -2,6 +2,7 @@ table.customTableClass {
   background-color: #FCFCFC;
   border-collapse: collapse;
   width: 100%;
+  font-size: 18px;
 }
 table.customTableClass td, table.customTableClass th {
   border: 1px solid #AAAAAA;
@@ -13,7 +14,7 @@ table.customTableClass thead {
   background: #696969;
 }
 table.customTableClass thead th {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: normal;
   color: #FFFFFF;
 }

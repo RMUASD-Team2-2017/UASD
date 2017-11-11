@@ -22,6 +22,7 @@
         $request_approved = $row['approved'];
         $request_completed = $row['completed'];
         $request_drone = $row['drone_id'];
+        $request_internal_id = $row['int_id'];
 
 
         echo '<!DOCTYPE html>
@@ -34,9 +35,10 @@
         <body>
         <div class="centerDiv">
         <center><a href="show_requests.php">⬑ Go Back</a></center>
-        <center><h1>AED Request</h1><h2>Request id: '.$request_id.'</h2></center>';
+        <center><h1>AED Request</h1><h2>Request '.$request_internal_id.'</h2></center>';
 
         echo '<h2>Administrative information</h2>';
+        echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Unique ID: <b>'.$request_id.'</b></span></p>';
         echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Time and date: <b>'.$request_time.'</b></span></p>';
 
         if ($request_approved == 0) {
@@ -133,7 +135,6 @@
             <th>Location</th>
             <th>Location accuracy</th>
             <th>Time and date</th>
-            <th>GPS timestamp</th>
             <th>Altitude</th>
             <th>Altitude accuracy</th>
             </tr>
@@ -151,8 +152,7 @@
                 echo "<td>" . $local_itr . "</td>";
                 echo "<td>" . $row['loc_lat'] . ", " . $row['loc_lng'] . "</td>";
                 echo "<td>" . $row['loc_accuracy'] . "</td>";
-                echo "<td>" . date('Y-m-d H:i:s', strtotime($row['req_time'])) . "</td>";
-                echo "<td>" . $row['timestamp'] . "</td>";
+                echo "<td>" . date('Y-m-d ', strtotime($row['req_time'])) . "<b>" . date('H:i:s', strtotime($row['req_time'])) . "</b>" . "</td>";
                 echo "<td>" . $row['altitude'] . "</td>";
                 echo "<td>" . $row['altitude_accuracy'] . "</td>";
                 echo "</tr>";
@@ -169,9 +169,9 @@
 
         if ($request_approved != 0 && $request_completed == 0 && $request_drone != 0) {
             echo '<script>
-                var marker_human_help = \'https://www.techgen.dk/AED/marker_human_help.png\';
-                var marker_aed = \'https://www.techgen.dk/AED/marker_aed.png\';
-                var marker_gcs = \'https://www.techgen.dk/AED/marker_gcs.png\';
+                var marker_human_help_icon = \'https://www.techgen.dk/AED/marker_human_help.png\';
+                var marker_aed_icon = \'https://www.techgen.dk/AED/marker_aed.png\';
+                var marker_gcs_icon = \'https://www.techgen.dk/AED/marker_gcs.png\';
                 function myMap() {
                     var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
                     var DroneLatLng = {lat: '.$drone_lat.',lng: '.$drone_lng.'};
@@ -196,7 +196,7 @@
                           position: myLatLng,
                           map: map,
                           title: \'Your Position\',
-                          icon: marker_human_help,
+                          icon: marker_human_help_icon,
                           visible: true
                         });
 
@@ -204,13 +204,13 @@
                           position: DroneLatLng,
                           map: map,
                           title: \'AED Position\',
-                          icon: marker_aed
+                          icon: marker_aed_icon
                         });
-                        marker_aed = new google.maps.Marker({
+                        marker_gcs = new google.maps.Marker({
                           position: GCSLatLng,
                           map: map,
                           title: \'GCS Position\',
-                          icon: marker_gcs
+                          icon: marker_gcs_icon
                         });
 
                     }
@@ -218,7 +218,7 @@
                 </script>';
         } else {
             echo '<script>
-                var marker_human_help = \'https://www.techgen.dk/AED/marker_human_help.png\';
+                var marker_human_help_icon = \'https://www.techgen.dk/AED/marker_human_help.png\';
                 function myMap() {
                     var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
                     var myLatLng2 = new google.maps.LatLng('.$best_row['loc_lat'].', '.$best_row['loc_lng'].');
@@ -241,7 +241,7 @@
                           position: myLatLng,
                           map: map,
                           title: \'Your Position\',
-                          icon: marker_human_help,
+                          icon: marker_human_help_icon,
                           visible: true
                         });
                         marker_human.setMap(map);

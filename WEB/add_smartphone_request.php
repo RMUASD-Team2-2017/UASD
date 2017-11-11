@@ -14,8 +14,8 @@
         //--------------------------------------------------------------------------
         // 2) Query database for data
         //--------------------------------------------------------------------------
-        $lat = $_POST['lat'];
-        $lng = $_POST['lng'];
+        $lat = round((float)$_POST['lat'],5);
+        $lng = round((float)$_POST['lng'],5);
         $GPS_timestamp = $_POST['GPS_timestamp'];
 
         $loc_accuracy = $_POST['loc_accuracy'];
