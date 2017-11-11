@@ -85,9 +85,12 @@
         var firstRunMap = 1;
         var map;
         var marker_human;
-        var marker_human_help = 'https://www.techgen.dk/AED/marker_human_help.png';
+        var marker_human_help_icon = 'https://www.techgen.dk/AED/marker_human_help.png';
         var marker_aed;
-        var marker_aed = 'https://www.techgen.dk/AED/marker_aed.png';
+        var marker_aed_icon = 'https://www.techgen.dk/AED/marker_aed.png';
+
+        var marker_human_help_icon_google;
+        var marker_aed_icon_google;
 
         var aed_status_timer;
         var aedLatLng;
@@ -214,16 +217,31 @@
                 };
                 map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
 
+                marker_human_help_icon_google = {
+                  url: marker_human_help_icon,
+                  // This marker is 30 pixels wide by 36 pixels high.
+                  size: new google.maps.Size(30, 36),
+                  // The origin for this image is (0, 0).
+                  origin: new google.maps.Point(0, 0),
+                  // The anchor for this image is the center which is at (15, 17).
+                  anchor: new google.maps.Point(15, 17)
+                };
                 marker_human = new google.maps.Marker({
                   map: map,
                   title: 'Your Position',
-                  icon: marker_human_help
+                  icon: marker_human_help_icon_google
                 });
 
+                marker_aed_icon_google = {
+                  url: marker_aed_icon,
+                  size: new google.maps.Size(30, 36),
+                  origin: new google.maps.Point(0, 0),
+                  anchor: new google.maps.Point(15, 17)
+                };
                 marker_aed = new google.maps.Marker({
                   map: map,
                   title: 'AED Position',
-                  icon: marker_aed
+                  icon: marker_aed_icon_google
                 });
             } else {
                 if (in_aedLatLng != null && in_aedLatLng.lat != 0 && in_aedLatLng.lng != 0) {

@@ -172,6 +172,11 @@
                 var marker_human_help_icon = \'https://www.techgen.dk/AED/marker_human_help.png\';
                 var marker_aed_icon = \'https://www.techgen.dk/AED/marker_aed.png\';
                 var marker_gcs_icon = \'https://www.techgen.dk/AED/marker_gcs.png\';
+
+                var marker_human_help_icon_google;
+                var marker_aed_icon_google;
+                var marker_gcs_icon_google;
+
                 function myMap() {
                     var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
                     var DroneLatLng = {lat: '.$drone_lat.',lng: '.$drone_lng.'};
@@ -192,20 +197,39 @@
                         };
                         map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
 
+                        marker_human_help_icon_google = {
+                          url: marker_human_help_icon,
+                          size: new google.maps.Size(30, 36),
+                          origin: new google.maps.Point(0, 0),
+                          anchor: new google.maps.Point(15, 17)
+                        };
                         marker_human = new google.maps.Marker({
                           position: myLatLng,
                           map: map,
                           title: \'Your Position\',
-                          icon: marker_human_help_icon,
+                          icon: marker_human_help_icon_google,
                           visible: true
                         });
 
+                        marker_aed_icon_google = {
+                          url: marker_aed_icon,
+                          size: new google.maps.Size(30, 36),
+                          origin: new google.maps.Point(0, 0),
+                          anchor: new google.maps.Point(15, 17)
+                        };
                         marker_aed = new google.maps.Marker({
                           position: DroneLatLng,
                           map: map,
                           title: \'AED Position\',
-                          icon: marker_aed_icon
+                          icon: marker_aed_icon_google
                         });
+
+                        marker_gcs_icon_google = {
+                          url: marker_gcs_icon,
+                          size: new google.maps.Size(30, 36),
+                          origin: new google.maps.Point(0, 0),
+                          anchor: new google.maps.Point(15, 17)
+                        };
                         marker_gcs = new google.maps.Marker({
                           position: GCSLatLng,
                           map: map,
@@ -219,6 +243,9 @@
         } else {
             echo '<script>
                 var marker_human_help_icon = \'https://www.techgen.dk/AED/marker_human_help.png\';
+
+                var marker_human_help_icon_google;
+
                 function myMap() {
                     var myLatLng = {lat: '.$best_row['loc_lat'].',lng: '.$best_row['loc_lng'].'};
                     var myLatLng2 = new google.maps.LatLng('.$best_row['loc_lat'].', '.$best_row['loc_lng'].');
@@ -237,11 +264,20 @@
                         };
                         map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
 
+                        marker_human_help_icon_google = {
+                          url: marker_human_help_icon,
+                          // This marker is 20 pixels wide by 32 pixels high.
+                          size: new google.maps.Size(30, 36),
+                          // The origin for this image is (0, 0).
+                          origin: new google.maps.Point(0, 0),
+                          // The anchor for this image is the base of the flagpole at (0, 32).
+                          anchor: new google.maps.Point(15, 17)
+                        };
                         marker_human = new google.maps.Marker({
                           position: myLatLng,
                           map: map,
                           title: \'Your Position\',
-                          icon: marker_human_help_icon,
+                          icon: marker_human_help_icon_google,
                           visible: true
                         });
                         marker_human.setMap(map);
