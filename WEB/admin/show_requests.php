@@ -133,7 +133,7 @@
     echo '<p><i>showing the 10 latest completed requests</i></p>';
 
     /* SHOW REJECTED */
-    $sql = "SELECT * FROM `AED_requests` WHERE `approved` =2 ORDER BY  `int_id` DESC";
+    $sql = "SELECT * FROM `AED_requests` WHERE `approved` =2 ORDER BY  `int_id` DESC LIMIT 5";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Rejected</h2>';
     echo '<table class="customTableClass">
@@ -157,6 +157,7 @@
     }
     echo "</tbody>
     </table>";
+    echo '<p><i>showing the 5 latest rejected requests</i></p>';
 
     echo '<br />';
     echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';

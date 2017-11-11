@@ -35,7 +35,7 @@
         <body>
         <div class="centerDiv">
         <center><a href="show_requests.php">⬑ Go Back</a></center>
-        <center><h1>AED Request</h1><h2>Request '.$request_internal_id.'</h2></center>';
+        <center><h1>AED Request '.$request_internal_id.'</h1></center>';
 
         echo '<h2>Administrative information</h2>';
         echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Unique ID: <b>'.$request_id.'</b></span></p>';
