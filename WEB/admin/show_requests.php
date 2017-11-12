@@ -27,7 +27,7 @@
     //echo '<div style="clear:both;"></div>';
 
     /* SHOW UNAPPROVED */
-    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` =0 ORDER BY  `int_id` DESC";
+    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` =0 AND `stopped` =0 ORDER BY  `int_id` DESC";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Awaiting approval or rejection</h2>';
     echo '<table class="customTableClass">
@@ -62,7 +62,7 @@
     </table>";
 
     /* SHOW APPROVED BUT UNCOMPLETED */
-    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 AND `completed` =0 ORDER BY  `int_id` DESC";
+    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 AND `completed` =0 AND `stopped` =0 ORDER BY  `int_id` DESC";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Awaiting completion</h2>';
     echo '<table class="customTableClass">
@@ -100,7 +100,7 @@
     </table>";
 
     /* SHOW APPROVED AND COMPLETED */
-    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 and `completed` !=0 ORDER BY  `completed` DESC LIMIT 10";
+    $sql = "SELECT * FROM `AED_requests` WHERE  `approved` !=0 AND `approved` !=2 and `completed` !=0 AND `stopped` =0 ORDER BY  `completed` DESC LIMIT 10";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Completed</h2>';
     echo '<table class="customTableClass">
@@ -133,7 +133,7 @@
     echo '<p><i>showing the 10 latest completed requests</i></p>';
 
     /* SHOW REJECTED */
-    $sql = "SELECT * FROM `AED_requests` WHERE `approved` =2 ORDER BY  `int_id` DESC LIMIT 5";
+    $sql = "SELECT * FROM `AED_requests` WHERE `approved` =2 AND `stopped` =0 ORDER BY  `int_id` DESC LIMIT 5";
     $result = mysqli_query($con, $sql);          //query
     echo '<h2>Rejected</h2>';
     echo '<table class="customTableClass">
@@ -158,6 +158,33 @@
     echo "</tbody>
     </table>";
     echo '<p><i>showing the 5 latest rejected requests</i></p>';
+
+    /* SHOW REJECTED */
+    $sql = "SELECT * FROM `AED_requests` WHERE `stopped` !=0 ORDER BY  `int_id` DESC LIMIT 5";
+    $result = mysqli_query($con, $sql);          //query
+    echo '<h2>Stopped</h2>';
+    echo '<table class="customTableClass">
+    <thead>
+    <tr>
+    <th>Request #</th>
+    <th>Time and date</th>
+    <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>';
+
+    while($row = mysqli_fetch_array($result))
+    {
+        echo '<tr style="background-color: #CCCCCC;">';
+
+        echo "<td>" . $row['int_id'] . "</td>";
+        echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
+        echo '<td style="padding-top:3px;"><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:3px;"></a></td>';
+        echo "</tr>";
+    }
+    echo "</tbody>
+    </table>";
+    echo '<p><i>showing the 5 latest stopped requests</i></p>';
 
     echo '<br />';
     echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';

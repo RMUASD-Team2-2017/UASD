@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `AED_requests` (
   `completed` bigint(15) NOT NULL,
   `eta` bigint(15) NOT NULL,
   `approved` bigint(15) NOT NULL,
+  `stopped` int(1) NOT NULL,
   PRIMARY KEY (`int_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=167 ;
 

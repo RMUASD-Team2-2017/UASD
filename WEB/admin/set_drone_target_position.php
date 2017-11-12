@@ -8,8 +8,8 @@
     }
 
     $drone_id = $_POST['drone_id'];
-    $lat = $_POST['lat'];
-    $lng = $_POST['lng'];
+    $lat = round((float)$_POST['lat'],5);
+    $lng = round((float)$_POST['lng'],5);
 
     if ($lat != '' && $lng != '') {
         $sql = "UPDATE `AED_drone_list` SET `target_lat` = '$lat', `target_lng` = '$lng' WHERE  `id` = '$drone_id'";

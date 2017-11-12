@@ -53,9 +53,21 @@
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request approved at <b>'.date('Y-m-d H:i:s', strtotime($request_approved)).'</b></span></p>';
         }
 
+        // DISPLAY BUTTONS FOR TERMINATE, ABORT, AND LAND
         if ($request_completed == 0) {
-            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
             if ($request_approved != 0 && $request_approved != 2) {
+                echo '<p style="margin-bottom: 20px;">';
+                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">TERMINATE</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">ABORT</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">LAND</span></a>';
+                echo '</p>';
+            }
+        }
+
+        // DISPLAY BUTTON FOR COMPLETE
+        if ($request_completed == 0) {
+            if ($request_approved != 0 && $request_approved != 2) {
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
                 echo '<p style="margin-bottom: 20px;">';
                 echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">COMPLETE</span></a>';
                 echo '</p>';
@@ -64,39 +76,46 @@
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request completed at <b>'.date('Y-m-d H:i:s', strtotime($request_completed)).'</b></span></p>';
         }
 
-
-        $sql = "SELECT * FROM `AED_drone_list`  WHERE `id` = '$request_drone'";
-        $result = mysqli_query($con, $sql);          //query
-        $row = mysqli_fetch_array($result);
-        $drone_lat = $row['cur_lat'];
-        $drone_lng = $row['cur_lng'];
-        $gcs_lat = $row['loc_lat'];
-        $gcs_lng = $row['loc_lng'];
-
-        if ($request_drone == 0) {
-            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">No UAV has been assigned</span></p>';
-        } else {
-            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Assigned UAV: <b>'.$row['name'].'</b> - <i>UAV ID: '.$request_drone.'</i></span></p>';
-
-            if ($row['state'] == 'idle') {
-                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
-            } elseif ($row['state'] == 'maintenance' || $row['state'] == 'error') {
-                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
-            } elseif ($row['state'] == 'landed') {
-                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+        // SHOW THE ASSIGNED DRONE; BUT ONLY IF THE REQUEST HAS BEEN APPROVED (NOT EQUAL TO 0 OR 2)
+        if ($request_approved != 0 && $request_approved != 2) {
+            if ($request_drone == 0) {
+                // NO ASSIGNED DRONE
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">No UAV has been assigned</span></p>';
             } else {
-                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
-            }
-            if ($row['state'] != 'landed' && $row['state'] != 'maintenance' && $row['state'] != 'error') {
-                if ($request_eta != '0') {
-                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">ETA: <b>'.date('Y-m-d H:i:s', strtotime($request_eta)).'</b></span></p>';
-                } else {
-                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">ETA: none</span></p>';
-                }
-            }
+                // FETCH THE ASSIGNED DRONE
+                $sql = "SELECT * FROM `AED_drone_list`  WHERE `id` = '$request_drone'";
+                $result = mysqli_query($con, $sql);          //query
+                $row = mysqli_fetch_array($result);
+                $drone_lat = $row['cur_lat'];
+                $drone_lng = $row['cur_lng'];
+                $gcs_lat = $row['loc_lat'];
+                $gcs_lng = $row['loc_lng'];
 
+                // DISPLAY THE ASSIGNED DRONE
+                echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Assigned UAV: <b>'.$row['name'].'</b> - <i>UAV ID: '.$request_drone.'</i></span></p>';
+
+                if ($row['state'] == 'idle') {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+                } elseif ($row['state'] == 'maintenance' || $row['state'] == 'error') {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+                } elseif ($row['state'] == 'landed') {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+                } else {
+                    echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;" >UAV state: <b>' . $row['state'] . "</b></span></p>";
+                }
+                if ($row['state'] != 'landed' && $row['state'] != 'maintenance' && $row['state'] != 'error') {
+                    if ($request_eta != '0') {
+                        echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">ETA: <b>'.date('Y-m-d H:i:s', strtotime($request_eta)).'</b></span></p>';
+                    } else {
+                        echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">ETA: none</span></p>';
+                    }
+                }
+
+            }
         }
 
+
+        // FETCH LOCATION INFORMATION
         $sql = "SELECT * FROM `AED_smartphone_requests`  WHERE `id` = '$request_id'";
         $result = mysqli_query($con, $sql);          //query
 
