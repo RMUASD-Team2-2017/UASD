@@ -23,6 +23,7 @@
         $request_completed = $row['completed'];
         $request_drone = $row['drone_id'];
         $request_internal_id = $row['int_id'];
+        $request_stopped = $row['stopped'];
 
 
         echo '<!DOCTYPE html>
@@ -41,38 +42,48 @@
         echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Unique ID: <b>'.$request_id.'</b></span></p>';
         echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #AAAAAA;">Time and date: <b>'.$request_time.'</b></span></p>';
 
-        if ($request_approved == 0) {
+        if ($request_approved == 0 && $request_stopped == 0) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting approval</span></p>';
             echo '<p style="margin-bottom: 20px;">';
             echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">APPROVE</span></a>';
             echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $request_id . '&page=show_request.php' . '" class="button_style"><span style="padding:5px; margin-left: 5px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">REJECT</span></a>';
             echo '</p>';
+        } elseif ($request_approved != 0 && $request_approved != 2) {
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request approved at <b>'.date('Y-m-d H:i:s', strtotime($request_approved)).'</b></span></p>';
         } elseif ($request_approved == 2) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">Request rejected</span></p>';
-        } else {
-            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request approved at <b>'.date('Y-m-d H:i:s', strtotime($request_approved)).'</b></span></p>';
         }
 
-        // DISPLAY BUTTONS FOR TERMINATE, ABORT, AND LAND
-        if ($request_completed == 0) {
+        // DISPLAY BUTTONS FOR TERMINATE, ABORT, AND LAND (not if flight already stopped)
+        if ($request_completed == 0 && $request_stopped == 0) {
             if ($request_approved != 0 && $request_approved != 2) {
                 echo '<p style="margin-bottom: 20px;">';
-                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">TERMINATE</span></a>';
-                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">ABORT</span></a>';
-                echo '<a href="https://www.techgen.dk/AED/admin/NaF.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">LAND</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=1' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">TERMINATE</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=2' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">ABORT</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=3' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">LAND</span></a>';
                 echo '</p>';
             }
+        } elseif ($request_stopped != 0) {
+            echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">Request stopped';
+            if ($request_stopped == 1) {
+                echo " (terminated)";
+            } elseif ($request_stopped == 2) {
+                echo " (aborted)";
+            } elseif ($request_stopped == 3) {
+                echo " (land)";
+            }
+            echo '</span></p>';
         }
 
-        // DISPLAY BUTTON FOR COMPLETE
-        if ($request_completed == 0) {
+        // DISPLAY BUTTON FOR COMPLETE (not if flight stopped)
+        if ($request_completed == 0 && $request_stopped == 0) {
             if ($request_approved != 0 && $request_approved != 2) {
                 echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
                 echo '<p style="margin-bottom: 20px;">';
                 echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">COMPLETE</span></a>';
                 echo '</p>';
             }
-        } else {
+        } elseif ($request_stopped == 0) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request completed at <b>'.date('Y-m-d H:i:s', strtotime($request_completed)).'</b></span></p>';
         }
 
@@ -110,7 +121,6 @@
                         echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FFFF00;">ETA: none</span></p>';
                     }
                 }
-
             }
         }
 

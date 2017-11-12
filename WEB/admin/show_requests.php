@@ -168,6 +168,7 @@
     <tr>
     <th>Request #</th>
     <th>Time and date</th>
+    <th>Reason</th>
     <th>Action</th>
     </tr>
     </thead>
@@ -179,6 +180,17 @@
 
         echo "<td>" . $row['int_id'] . "</td>";
         echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
+
+        echo "<td>";
+        if ($row['stopped'] == 1) {
+            echo "Terminated";
+        } elseif ($row['stopped'] == 2) {
+            echo "Aborted";
+        } elseif ($row['stopped'] == 3) {
+            echo "Landed";
+        }
+        echo "</td>";
+
         echo '<td style="padding-top:3px;"><a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:3px;"></a></td>';
         echo "</tr>";
     }
