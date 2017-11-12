@@ -202,7 +202,8 @@
     echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';
     echo '</div>';
 
-    echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>';
+    // jQuery not needed since the below script handles DOMs the old school way but there is nothing other jQuery would add for this page and therefore it is too heavy
+    //echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>';
 
     echo '<script type="text/javascript">
         var elems = document.getElementsByClassName(\'confirmation\');

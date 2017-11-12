@@ -197,13 +197,9 @@
         echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>';
 
         echo '<script type="text/javascript">
-            var elems = document.getElementsByClassName(\'confirmation\');
-            var confirmIt = function (e) {
-                if (!confirm(\'Are you sure?\')) e.preventDefault();
-            };
-            for (var i = 0, l = elems.length; i < l; i++) {
-                elems[i].addEventListener(\'click\', confirmIt, false);
-            }
+            $(\'.confirmation\').on(\'click\', function () {
+                return confirm(\'Are you sure?\');
+            });
             </script>';
 
         if ($request_approved != 0 && $request_completed == 0 && $request_drone != 0) {
