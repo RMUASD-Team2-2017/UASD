@@ -53,8 +53,8 @@
         echo "<td>" . $row['int_id'] . "</td>";
         echo "<td>" . date('Y-m-d ', strtotime($row['time'])) . "<b>" . date('H:i', strtotime($row['time'])) . "</b>" . date(':s', strtotime($row['time'])) . "</td>";
         echo '<td style="padding-top:3px;">';
-        echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '&page=show_requests.php' .'"><img border="0" alt="Approve" src="approve_icon.png" width="24" height="24" style="margin-left:3px;"></a>';
-        echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '&page=show_requests.php' . '"><img border="0" alt="Reject" src="reject_icon.png" width="24" height="24" style="margin-left:10px;"></a>';
+        echo '<a href="https://www.techgen.dk/AED/admin/approve_request.php?id='. $row['request_id'] . '&page=show_requests.php' .'" class="confirmation"><img border="0" alt="Approve" src="approve_icon.png" width="24" height="24" style="margin-left:3px;"></a>';
+        echo '<a href="https://www.techgen.dk/AED/admin/reject_request.php?id='. $row['request_id'] . '&page=show_requests.php' . '" class="confirmation"><img border="0" alt="Reject" src="reject_icon.png" width="24" height="24" style="margin-left:10px;"></a>';
         echo '<a href="https://www.techgen.dk/AED/admin/show_request.php?id='. $row['request_id'] . '"><img border="0" alt="See more" src="see-more_icon.png" width="24" height="24" style="margin-left:10px;"></a></td>';
         echo "</tr>";
     }
@@ -200,8 +200,21 @@
 
     echo '<br />';
     echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';
-    echo '</div>
-    </body>
+    echo '</div>';
+
+    echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>';
+
+    echo '<script type="text/javascript">
+        var elems = document.getElementsByClassName(\'confirmation\');
+        var confirmIt = function (e) {
+            if (!confirm(\'Are you sure?\')) e.preventDefault();
+        };
+        for (var i = 0, l = elems.length; i < l; i++) {
+            elems[i].addEventListener(\'click\', confirmIt, false);
+        }
+        </script>';
+
+    echo '</body>
     </html>';
 
     mysqli_close($con);
