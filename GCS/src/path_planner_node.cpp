@@ -190,55 +190,34 @@ if(TEST)
 {
     geofence fence_test;
     fence_test.set_max_altitude(200.0);
-    //fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/google_fence1.csv");
-    fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/geofence.txt", true);
+    //fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfence.csv", false); // Testfence
+    fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/geofence.csv", true);
     Path_planner plan(fence_test);
     plan.set_nodes(fence_test.get_fence());
 
-    
-    plan.export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");   // Debugging
 
-    point start, goal, ok_point, p_inside, p_outside, fence_point;
-    /*start.lat = 55.558944;
-    start.lon = 10.109823;
-    goal.lat = 55.559004; //55.559056;
-    goal.lon = 10.109658; //10.109683;
-    ok_point.lat = 55.558889;
-    ok_point.lon = 10.109714;
-    p_inside.lat = 55.05;
-    p_inside.lon = 10.05;
-    p_outside.lat =  55.559113;
-    p_outside.lon =  10.110014;
-    fence_point.lat = 55.558841;
-    fence_point.lon = 10.109575;
+    //plan.export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");   // Debugging
+
+    point start, goal;
+    // Start and goal on testfence
+    start.lat = 55.558904;
+    start.lon = 10.109925;
+    goal.lat =  55.559052; //55.559056;
+    goal.lon = 10.109655; //10.109683;
     fence_test.geodetic_to_UTM(start);
     fence_test.geodetic_to_UTM(goal);
-    fence_test.geodetic_to_UTM(ok_point);
-    fence_test.geodetic_to_UTM(fence_point);*/
-    //std::cout << "HER " <<  start.lat << " " << start.lon << std::endl;
-    //fence_test.UTM_to_geodetic(start);
-    //std::cout << start.lat << " " << start.lon << std::endl;
-    /*
-    std::cout << "DEBUGGING edge legal: " << fence_test.edge_legal(start, ok_point) << std::endl;
-    std::cout << "Point legal: " << fence_test.point_legal(ok_point, UTM);*/
+
 
     // Start and goal on the real geofence
-    start.lat = 55.560531;
-    start.lon = 10.113121;
+    start.lat = 55.555827;//55.560531;
+    start.lon = 10.101975;//10.113121;
     goal.lat =  55.565000;
     goal.lon =  10.118309;
     fence_test.geodetic_to_UTM(start);
     fence_test.geodetic_to_UTM(goal);
 
-
     gcs::path thepath = plan.plan_path(start,goal);
     std::cout << "\nPath planning has finished!" << std::endl;
-
-    /*
-    for(unsigned int i = 0; thepath.path.size(); i++)
-    {
-        std::cout << thepath.path[i].lat << std::endl;
-    }*/
 }
 
 

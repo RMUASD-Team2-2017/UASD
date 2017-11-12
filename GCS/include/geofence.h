@@ -19,7 +19,7 @@
 //#include <GeographicLib/TransverseMercatorExact.hpp>
 #include <GeographicLib/TransverseMercator.hpp>
 
-#define DEBUG true
+#define DEBUG false
 #define lat_index 2
 #define lon_index 3
 #define STEP_SIZE 0.5//0.01

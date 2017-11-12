@@ -5,6 +5,7 @@
 
 #define DEBUGGING true
 #define SHRINK_FACTOR 0.90F
+#define SHRINK_METERS 1.0F
 
 Path_planner::Path_planner(geofence &fence)
 {
@@ -148,7 +149,9 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
 gcs::path Path_planner::plan_path(point start, point goal)
 {
     if(DEBUG) std::cout << "Shrinking the polygon..." << std::endl;
-    shrink_polygon(SHRINK_FACTOR);
+    shrink_polygon2(SHRINK_METERS);
+    export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
+
     nodes.push_back(Node(start, -1));
     nodes.push_back(Node(goal, -2));
 
@@ -201,9 +204,91 @@ void Path_planner::shrink_polygon(double shrink_factor)
     }
 }
 
+void Path_planner::shrink_polygon2(double shrink_meters)
+{
+    std::vector<Node> temp_nodes;
+
+    typedef std::numeric_limits< double > dbl;
+    if(DEBUGGING) std::cout.precision(dbl::max_digits10);
+
+    for(unsigned int i = 0; i<nodes.size(); i++)
+    {
+        Node lpoint;
+        Node mpoint;
+        Node rpoint;
+        int index;
+
+        // Left point
+        if(i == 0) index = nodes.size() - 1;
+        else index = i - 1;
+        lpoint = nodes[index];
+
+        // Middle point
+        mpoint = nodes[i];
+
+        // Right point
+        if(i == nodes.size()-1) index = 0;
+        else index = i + 1;
+        rpoint = nodes[index];
+
+        // Calculate two vector from the middle point to the other points
+        Vect vec1;
+        Vect vec2;
+        vec1.x = lpoint.coordinate.lat - mpoint.coordinate.lat;
+        vec1.y = lpoint.coordinate.lon - mpoint.coordinate.lon;
+        vec2.x = rpoint.coordinate.lat - mpoint.coordinate.lat;
+        vec2.y = rpoint.coordinate.lon - mpoint.coordinate.lon;
+
+        // Calculate a unit-vector beweeen the two other vectors
+        Vect vec3 = vec1 + vec2;
+        vec3 = vec3.unit_vect();
+
+        // Make a copy of the middle node and move it a distance in the direction of the unit-vector
+        Node new_node = nodes[i];
+
+        if(DEBUGGING) std::cout << "Unit-vector x: " << vec3.x << " y: " << vec3.y << std::endl;
+        if(DEBUGGING) new_node.print_node();
+        if(DEBUGGING)
+        {
+            Node temp = new_node;
+            fence->UTM_to_geodetic(temp.coordinate);
+            temp.print_node();
+        }
+
+        point new_point1;
+        point new_point2;
+        new_point1.lat = new_node.coordinate.lat + vec3.x * shrink_meters;
+        new_point1.lon = new_node.coordinate.lon + vec3.y * shrink_meters;
+        new_point2.lat = new_node.coordinate.lat + vec3.x * -shrink_meters;
+        new_point2.lon = new_node.coordinate.lon + vec3.y * -shrink_meters;
+
+        if(fence->point_legal(new_point1, UTM))
+            new_node.coordinate = new_point1;
+        else if(fence->point_legal(new_point2, UTM))
+            new_node.coordinate = new_point2;
+        else
+            std::cout << "Path_planner: An error occured shrinking the polygon!" << std::endl;
+
+        if(DEBUGGING) new_node.print_node();
+        if(DEBUGGING)
+        {
+            Node temp = new_node;
+            fence->UTM_to_geodetic(temp.coordinate);
+            temp.print_node();
+        }
+        std::cout << "\n";
+
+        temp_nodes.push_back(new_node);
+    }
+    nodes = temp_nodes;
+}
+
 void Path_planner::export_as_csv(std::string filename)
 {
     std::ofstream csvfile(filename);
+    typedef std::numeric_limits< double > dbl;
+    csvfile.precision(dbl::max_digits10);   // Set max precision outputs to file
+
     if (csvfile.is_open())
     {
         csvfile << "Name,Description,Latitude,Longitude\n";
@@ -211,7 +296,7 @@ void Path_planner::export_as_csv(std::string filename)
         {
             point temp_point = nodes[i].coordinate;
             fence->UTM_to_geodetic(temp_point);
-            csvfile << i+1 << ",none," << temp_point.lat << "," << temp_point.lon << "\n";
+            csvfile << i+1 << i+1 << ",none," << temp_point.lat << "," << temp_point.lon << "\n";
         }
 
         csvfile.close();

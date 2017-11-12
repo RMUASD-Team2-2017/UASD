@@ -13,6 +13,8 @@
 
 struct Node
 {
+    Node(){}
+
     Node(point coordinate)
     {
         this->coordinate = coordinate;
@@ -38,6 +40,40 @@ struct Node
     double fscore = std::numeric_limits<double>::max();;
 };
 
+struct Vect
+{
+    Vect(){}
+    Vect(double x, double y)
+    {
+        this->x = x;
+        this->y = y;
+    }
+
+    double operator*(const Vect b)
+    {
+        return this->x * b.x + this->y * b.y;
+    }
+
+    Vect operator+(const Vect b)
+    {
+        return Vect(this->x + b.x, this->y + b.y);
+    }
+
+    double length()
+    {
+        return std::sqrt(x*x + y*y);
+    }
+
+    Vect unit_vect()
+    {
+        return Vect(x/length(), y/length());
+    }
+
+    double x;
+    double y;
+    double z;
+};
+
 class Path_planner
 {
     public:
@@ -50,6 +86,7 @@ class Path_planner
     private:
         void connect_all_nodes();
         void shrink_polygon(double shrink_factor);
+        void shrink_polygon2(double shrink_factor);
         std::vector<Node*> a_star(Node *start, Node *goal);
         double heuristic_dist(Node *start, Node *goal);
         Node* get_node_with_lowest_fscore(std::vector<Node*> &openset);
