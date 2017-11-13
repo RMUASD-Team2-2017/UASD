@@ -152,36 +152,34 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
 gcs::path Path_planner::plan_path(point start, point goal)
 {
 	gcs::path waypoint_path;
-	
-	if(!fence->point_legal(start, LatLon) && !fence->point_legal(goal, LatLon))
-	{
+
+	if(!fence->point_legal(start, UTM) && !fence->point_legal(goal, UTM))
+    //if(!fence->point_legal(start, LatLon) && !fence->point_legal(goal, LatLon))
+    {
 		if(DEBUGGING) ROS_INFO("Start or goal coordinates are not within the geofence!");
 		return waypoint_path;	// Remember to look at this in the node
 	}
-	
+
     if(DEBUGGING) ROS_INFO("Shrinking the polygon...\n");
     shrink_polygon2(SHRINK_METERS);
-    export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
+    //export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
 
     nodes.push_back(Node(start, -1));
     nodes.push_back(Node(goal, -2));
-
-    //std::cout << "Is start point inside: " << fence->point_legal(start, UTM) << std::endl;
 
     if(DEBUGGING) ROS_INFO("Connecting all nodes...\n");
     connect_all_nodes();    // Connect all nodes with each other
 
     // Run a-star from start to goal
-    if(DEBUGGING) ROS_INFO("A* pathplanning is started...\n"); 
+    if(DEBUGGING) ROS_INFO("A* pathplanning is started...\n");
     std::vector<Node*> path_nodes = a_star(&nodes[nodes.size() - 2], &nodes.back());
-    if(DEBUGGING) ROS_INFO("A* pathplanning is finished.\n"); 
+    if(DEBUGGING) ROS_INFO("A* pathplanning is finished.\n");
 
     // Interpolate between waypoints, if the distance between is to big
     //path_nodes = interpolate_path(path_nodes);
 
-    // Convert nodes into a path of waypoints
-    //gcs::path waypoint_path;
-    for(unsigned int i = 0; i<path_nodes.size(); i++)
+    // Convert nodes into a path of waypoints and reverse it (because reconstruct path reverses it)
+    for(unsigned i = path_nodes.size(); i-- > 0; )
     {
         fence->UTM_to_geodetic(path_nodes[i]->coordinate);
         if(DEBUGGING) path_nodes[i]->print_node();
@@ -198,6 +196,8 @@ std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
     for(unsigned int i = 0; i<nodes.size() - 1; i++)
     {
         // Create direction vector
+        nodes[i+1]->print_node();
+        nodes[i]->print_node();
         double vec_x = nodes[i+1]->coordinate.lat - nodes[i]->coordinate.lat;
         double vec_y = nodes[i+1]->coordinate.lon - nodes[i]->coordinate.lon;
         double vec_z = nodes[i+1]->coordinate.alt - nodes[i]->coordinate.alt;
@@ -209,6 +209,7 @@ std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
             int steps = length/MAX_WAYPOINT_DISTANCE;
 
             new_path.push_back(nodes[i]);   // Push start point
+            std::cout << "x: " << vec_x << " y: " << vec_y << " z: " << vec_z << std::endl << std::endl;
 
             // Interpolate
             int step = 0;
@@ -225,9 +226,15 @@ std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
                 step++;
                 std::cout << "Steps: " << steps << " step: " << step << std::endl;
             }
-            new_path.push_back(nodes[i+1]); // Push end point
+            //new_path.push_back(nodes[i+1]); // Push end point
+        }
+        else
+        {
+            new_path.push_back(nodes[i]);
         }
     }
+    new_path.push_back(nodes.back());   // Remember to push the goal node
+
     return new_path;
 }
 
