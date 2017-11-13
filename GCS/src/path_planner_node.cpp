@@ -64,7 +64,7 @@ gcs::path planPath()
     Path_planner planner(fence);
     fence.set_max_altitude(200.0);
     //fence.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfence.csv", false); // Testfence
-    fence.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/geofence.csv", true);
+    fence.set_fence_csv("/home/bjarkips/catkin_ws/src/GCS/src/fences/geofence.csv", true);
     planner.set_nodes(fence.get_fence());
 
     point start_point, goal_point;

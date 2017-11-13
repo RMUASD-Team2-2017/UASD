@@ -151,7 +151,15 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
 
 gcs::path Path_planner::plan_path(point start, point goal)
 {
-    if(DEBUG) std::cout << "Shrinking the polygon..." << std::endl;
+	gcs::path waypoint_path;
+	
+	if(!fence->point_legal(start, LatLon) && !fence->point_legal(goal, LatLon))
+	{
+		if(DEBUGGING) ROS_INFO("Start or goal coordinates are not within the geofence!");
+		return waypoint_path;	// Remember to look at this in the node
+	}
+	
+    if(DEBUGGING) ROS_INFO("Shrinking the polygon...\n");
     shrink_polygon2(SHRINK_METERS);
     export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
 
@@ -160,19 +168,19 @@ gcs::path Path_planner::plan_path(point start, point goal)
 
     //std::cout << "Is start point inside: " << fence->point_legal(start, UTM) << std::endl;
 
-    if(DEBUG) std::cout << "Connecting all nodes..." << std::endl;
+    if(DEBUGGING) ROS_INFO("Connecting all nodes...\n");
     connect_all_nodes();    // Connect all nodes with each other
 
     // Run a-star from start to goal
-    if(DEBUG) std::cout << "A* pathplanning is started..." << std::endl;
+    if(DEBUGGING) ROS_INFO("A* pathplanning is started...\n"); 
     std::vector<Node*> path_nodes = a_star(&nodes[nodes.size() - 2], &nodes.back());
-    if(DEBUG) std::cout << "A* pathplanning is finished. Printing the path..." << std::endl;
+    if(DEBUGGING) ROS_INFO("A* pathplanning is finished.\n"); 
 
     // Interpolate between waypoints, if the distance between is to big
     //path_nodes = interpolate_path(path_nodes);
 
     // Convert nodes into a path of waypoints
-    gcs::path waypoint_path;
+    //gcs::path waypoint_path;
     for(unsigned int i = 0; i<path_nodes.size(); i++)
     {
         fence->UTM_to_geodetic(path_nodes[i]->coordinate);
@@ -315,7 +323,7 @@ void Path_planner::shrink_polygon2(double shrink_meters)
         else if(fence->point_legal(new_point2, UTM))
             new_node.coordinate = new_point2;
         else
-            std::cout << "Path_planner: An error occured shrinking the polygon!" << std::endl;
+            ROS_INFO("Path_planner: An error occured shrinking the polygon!");
 
         /*
         if(DEBUGGING) new_node.print_node();
