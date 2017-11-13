@@ -68,11 +68,11 @@ gcs::path planPath()
     planner.set_nodes(fence.get_fence());
 
     point start_point, goal_point;
-    start_point.lat = start.lat;
-    start_point.lon = start.lon;
+    start_point.lat =  55.557021;//start.lat;
+    start_point.lon =  10.113367;//start.lon;
     start_point.alt = 0.0;
-    goal_point.lat =  goal.lat;
-    goal_point.lon = goal.lon;
+    goal_point.lat =   55.565114;//goal.lat;
+    goal_point.lon =  10.121754;///goal.lon;
     goal_point.alt = 0.0;
 
     std::cout << start_point.lat << " " << start_point.lon << std::endl;
