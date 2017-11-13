@@ -2,6 +2,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import json
 import time
+from rospy_message_converter import message_converter
 from gcs.msg import waypoint, path
 
 class web_interface:
@@ -118,18 +119,35 @@ class web_interface:
         set_preflight_data_url = 'https://www.techgen.dk/AED/admin/set_drone_preflight.php'
         path_string = ''
         i = 0
-        for waypoints in data.path:
-            path_string = '(' + str(data.path[i].lat) + ',' + str(data.path[i].lon) + ')'
+        #dict = message_converter.convert_ros_message_to_dictionary(data) This is really, really smart! We might need it at some point.
+        # It converts ros messages to dict+json  (json: using a different function) and vice versa. Installed with sudo pip install message_converter. Examples: https://github.com/baalexander/rospy_message_converter
+        for waypoint in data.path_waypoints.path:
+            path_string = path_string + '(' + str(data.path_waypoints.path[i].lat) + ',' + str(data.path_waypoints.path[i].lon) + ')'
             i=i+1
-        weather_string = 'Great, great weather!'
-        payload = { 'drone_id': drone_id, 'cur_lat': data.cur_position.lat, 'cur_lng': data.cur_position.lon, 'target_lat': data.target_position.lat, 'target_lng': data.target_position.lon, 'path': path_string, 'weather': data.weather.data}
+        cur_lat = data.path_waypoints.path[0].lat
+        cur_lon = data.path_waypoints.path[0].lon
+        target_lat = data.path_waypoints.path[i-1].lat
+        target_lon = data.path_waypoints.path[i-1].lon
+        weather = {'temp': data.temperature, 'humidity': data.humidity, 'wind': data.wind}
+        weather_string = json.dumps(weather)
+        payload = { 'drone_id': drone_id, 'cur_lat': cur_lat, 'cur_lng': cur_lon, 'target_lat': target_lat, 'target_lng': target_lon, 'path': path_string, 'weather': weather_string}
         r = ''
-        try:
-            r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
-        except:
-            print 'Unexpected error in polling set_preflight_data'
-            return -8
-        #print 'Preflight', r.text
+        complete = False
+        while not complete:
+            try:
+                r = requests.post(url = set_preflight_data_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+                json_format = json.loads(r.text)
+                if json_format["status"] == 1:
+                    complete = True
+            except:
+                print 'Unexpected error in set_mission_done'
+            if not complete:
+                time.sleep(1)
+
+
+        print '#################################################################################'
+        print 'Preflight information transmitted'
+        print '#################################################################################'
 
     def setUavState(self,drone_id,state): #Check this
         set_uav_state_url = 'https://www.techgen.dk/AED/admin/set_drone_state.php'
