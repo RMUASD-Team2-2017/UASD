@@ -7,15 +7,12 @@
 
 // Custom
 #include "geofence.h"
-#include "path_planner.h"
 
 // ROS
 #include <ros/ros.h>
 #include "gcs/planPath.h"
 #include "gcs/waypoint.h"
 #include "gcs/path.h"
-
-#define TEST 1
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -110,7 +107,7 @@ int main(int argc, char** argv)
 {
 	ros::init(argc, argv, VALUE_AS_STRING(PATH_PLANNER_CLASS));
 	ros::NodeHandle n;
-    PATH_PLANNER_CLASS planner(n);
+  PATH_PLANNER_CLASS planner(n);
 
 // std::ifstream geofence_file ("/home/mathias/Desktop/geofence_test.csv");
 // std::cout << geofence_file.good() << geofence_file.eof() << geofence_file.fail() << geofence_file.bad() << std::endl;
@@ -186,42 +183,9 @@ int main(int argc, char** argv)
 
 // std::cout << "Finished" << std::endl;
 
-if(TEST)
-{
-    geofence fence_test;
-    fence_test.set_max_altitude(200.0);
-    //fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfence.csv", false); // Testfence
-    fence_test.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/geofence.csv", true);
-    Path_planner plan(fence_test);
-    plan.set_nodes(fence_test.get_fence());
-
-
-    //plan.export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");   // Debugging
-
-    point start, goal;
-    // Start and goal on testfence
-    start.lat = 55.558904;
-    start.lon = 10.109925;
-    goal.lat =  55.559052; //55.559056;
-    goal.lon = 10.109655; //10.109683;
-    fence_test.geodetic_to_UTM(start);
-    fence_test.geodetic_to_UTM(goal);
-
-
-    // Start and goal on the real geofence
-    start.lat = 55.555827;//55.560531;
-    start.lon = 10.101975;//10.113121;
-    goal.lat =  55.565000;
-    goal.lon =  10.118309;
-    fence_test.geodetic_to_UTM(start);
-    fence_test.geodetic_to_UTM(goal);
-
-    gcs::path thepath = plan.plan_path(start,goal);
-    std::cout << "\nPath planning has finished!" << std::endl;
-}
-
-
-//fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
+geofence fence_test;
+fence_test.set_fence("/home/mathias/Desktop/geofence_test.csv");
+fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
 
 
 // // GEOFENCE TESTING!

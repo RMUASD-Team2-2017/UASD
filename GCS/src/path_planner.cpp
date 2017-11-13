@@ -6,6 +6,7 @@
 #define DEBUGGING true
 #define SHRINK_FACTOR 0.90F
 #define SHRINK_METERS 1.0F
+#define MAX_WAYPOINT_DISTANCE 900
 
 Path_planner::Path_planner(geofence &fence)
 {
@@ -142,7 +143,9 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
     gcs::waypoint point;
     point.lat = node->coordinate.lat;
     point.lon = node->coordinate.lon;
-    point.alt = node->coordinate.alt;
+    point.alt = CRUISE_HEIGHT;//node->coordinate.alt;
+    point.type = WAYPOINT;
+        //goal.alt = ;
     return point;
 }
 
@@ -165,15 +168,59 @@ gcs::path Path_planner::plan_path(point start, point goal)
     std::vector<Node*> path_nodes = a_star(&nodes[nodes.size() - 2], &nodes.back());
     if(DEBUG) std::cout << "A* pathplanning is finished. Printing the path..." << std::endl;
 
+    // Interpolate between waypoints, if the distance between is to big
+    //path_nodes = interpolate_path(path_nodes);
+
     // Convert nodes into a path of waypoints
     gcs::path waypoint_path;
     for(unsigned int i = 0; i<path_nodes.size(); i++)
     {
+        fence->UTM_to_geodetic(path_nodes[i]->coordinate);
         if(DEBUGGING) path_nodes[i]->print_node();
         waypoint_path.path.push_back(convert_node_to_waypoint(path_nodes[i]));
     }
 
     return waypoint_path;   // Missing: check if this works OBS fix so it returns lat and long instead of UTM
+}
+
+// Interpolate between waypoints, if the distance between is to big
+std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
+{
+    std::vector<Node*> new_path;
+    for(unsigned int i = 0; i<nodes.size() - 1; i++)
+    {
+        // Create direction vector
+        double vec_x = nodes[i+1]->coordinate.lat - nodes[i]->coordinate.lat;
+        double vec_y = nodes[i+1]->coordinate.lon - nodes[i]->coordinate.lon;
+        double vec_z = nodes[i+1]->coordinate.alt - nodes[i]->coordinate.alt;
+        double length = std::sqrt(vec_x*vec_x + vec_y*vec_y + vec_z*vec_z);
+
+        if(length > MAX_WAYPOINT_DISTANCE)
+        {
+            double x_temp, y_temp, z_temp;
+            int steps = length/MAX_WAYPOINT_DISTANCE;
+
+            new_path.push_back(nodes[i]);   // Push start point
+
+            // Interpolate
+            int step = 0;
+            while(step <= steps)
+            {
+                x_temp = nodes[i]->coordinate.lat + vec_x*( (double)step/(double)steps);
+                y_temp = nodes[i]->coordinate.lon + vec_y*((double)step/(double)steps);
+                z_temp = nodes[i]->coordinate.alt + vec_z*((double)step/(double)steps);
+                Node temp_node;
+                temp_node.coordinate.lat = x_temp;
+                temp_node.coordinate.lon = y_temp;
+                temp_node.coordinate.alt = z_temp;
+                new_path.push_back(&temp_node);
+                step++;
+                std::cout << "Steps: " << steps << " step: " << step << std::endl;
+            }
+            new_path.push_back(nodes[i+1]); // Push end point
+        }
+    }
+    return new_path;
 }
 
 void Path_planner::shrink_polygon(double shrink_factor)
@@ -246,6 +293,7 @@ void Path_planner::shrink_polygon2(double shrink_meters)
         // Make a copy of the middle node and move it a distance in the direction of the unit-vector
         Node new_node = nodes[i];
 
+        /*
         if(DEBUGGING) std::cout << "Unit-vector x: " << vec3.x << " y: " << vec3.y << std::endl;
         if(DEBUGGING) new_node.print_node();
         if(DEBUGGING)
@@ -253,7 +301,7 @@ void Path_planner::shrink_polygon2(double shrink_meters)
             Node temp = new_node;
             fence->UTM_to_geodetic(temp.coordinate);
             temp.print_node();
-        }
+        }*/
 
         point new_point1;
         point new_point2;
@@ -269,6 +317,7 @@ void Path_planner::shrink_polygon2(double shrink_meters)
         else
             std::cout << "Path_planner: An error occured shrinking the polygon!" << std::endl;
 
+        /*
         if(DEBUGGING) new_node.print_node();
         if(DEBUGGING)
         {
@@ -276,7 +325,7 @@ void Path_planner::shrink_polygon2(double shrink_meters)
             fence->UTM_to_geodetic(temp.coordinate);
             temp.print_node();
         }
-        std::cout << "\n";
+        std::cout << "\n";*/
 
         temp_nodes.push_back(new_node);
     }

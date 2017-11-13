@@ -11,6 +11,12 @@
 #include "gcs/waypoint.h"
 #include "gcs/path.h"
 
+#define CRUISE_HEIGHT 5
+#define TAKEOFF 0
+#define WAYPOINT 1
+#define LAND 2
+
+
 struct Node
 {
     Node(){}
@@ -85,6 +91,7 @@ class Path_planner
 
     private:
         void connect_all_nodes();
+        std::vector<Node*> interpolate_path(std::vector<Node*> nodes);
         void shrink_polygon(double shrink_factor);
         void shrink_polygon2(double shrink_factor);
         std::vector<Node*> a_star(Node *start, Node *goal);
