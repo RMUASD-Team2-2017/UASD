@@ -6,7 +6,7 @@ from gcs.msg import waypoint, setPreflightData, deploy_request
 from std_msgs.msg import Bool, String
 from sensor_msgs.msg import NavSatFix
 
-drone_number = 100
+drone_number = 1
 interface = web_interface.web_interface()
 interface.setAuthentication('uasd','halogenlampe')
 
