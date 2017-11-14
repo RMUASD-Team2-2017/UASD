@@ -22,13 +22,11 @@
             $row = mysqli_fetch_assoc($result);
             echo json_encode($row['stopped']); // Add "JSON_FORCE_OBJECT" if there shuld be identifiers but note these are "0" ... "max_num"
         } else {
-            echo 'test';
             echo json_encode(0);
         }
 
         mysqli_close($con);
     } else {
-        echo 'test2';
         echo json_encode(0);
     }
 ?>

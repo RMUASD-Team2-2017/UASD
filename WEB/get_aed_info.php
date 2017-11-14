@@ -35,7 +35,8 @@
         $array = mysqli_fetch_row($result);                          //fetch result
         if (!empty($array[1])) {
             // Drone has been dispatched
-            $return_time = date('Y-m-d H:i:s', strtotime($array[4]));
+            $return_time = date('Y-m-d H:i:s', strtotime($array[5]));
+            //echo $return_time;
 
             // Get drone location
             $sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$array[1]'";

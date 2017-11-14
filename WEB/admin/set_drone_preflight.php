@@ -16,7 +16,7 @@
     $path = $_POST['path'];
     $weather = $_POST['weather'];
 
-    $sql = "UPDATE `AED_drone_list` SET `cur_lat` = '$cur_lat', `cur_lng` = '$cur_lng', `target_lat` = '$target_lat', `target_lng` = '$target_lng', `path` = '$path', `weather` = '$weather' WHERE  `id` = '$drone_id'";
+    $sql = "UPDATE `AED_drone_list` SET `loc_lat` = '$cur_lat', `loc_lng` = '$cur_lng', `cur_lat` = '$cur_lat', `cur_lng` = '$cur_lng', `target_lat` = '$target_lat', `target_lng` = '$target_lng', `path` = '$path', `weather` = '$weather' WHERE  `id` = '$drone_id'";
     $result = mysqli_query($con, $sql);          //query
 
     if(mysqli_affected_rows($con) == 1) {
