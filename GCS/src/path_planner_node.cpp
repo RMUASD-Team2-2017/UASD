@@ -18,7 +18,7 @@
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
 
 #define PATH_PLANNER_CLASS path_planner
-#define CRUISE_HEIGHT 5
+#define CRUISE_HEIGHT 15
 #define TAKEOFF 0
 #define WAYPOINT 1
 #define LAND 2
