@@ -6,6 +6,7 @@ from gcs.msg import waypoint, setPreflightData, deploy_request
 from std_msgs.msg import Bool, String
 from sensor_msgs.msg import NavSatFix
 
+drone_number = 100
 interface = web_interface.web_interface()
 interface.setAuthentication('uasd','halogenlampe')
 
@@ -13,19 +14,19 @@ def missionDoneCallback(data):
     interface.setMissionDone(data.data)
 
 def setPreflightDataCallback(data):
-    drone_id = 1
+    drone_id = drone_number
     interface.setPreflightData(drone_id,data)
 
 def setUavStateCallback(data):
-    drone_id = 1
+    drone_id = drone_number
     interface.setUavState(drone_id,data.data)
 
 def setUavCurrentLocationCallback(data):
-    drone_id = 1
+    drone_id = drone_number
     interface.setUavCurrentLocation(drone_id,data)
 
 def setPreflightDataCallback(data):
-    drone_id = 1
+    drone_id = drone_number
     interface.setPreflightData(drone_id,data)
 
 def main():

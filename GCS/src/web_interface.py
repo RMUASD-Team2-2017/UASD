@@ -158,7 +158,6 @@ class web_interface:
             return -9
         #print 'setUavState', r.text
         if state == 'transport':
-            drone_id = 1
             eta = 0
             self.setRequestDroneIdEta(drone_id,eta)
 
