@@ -36,7 +36,7 @@ struct Node
     {
         std::cout << "Node id: " << node_id << std::endl;
         std::cout << "Lat: " << coordinate.lat << " Lon: " << coordinate.lon << std::endl;
-        std::cout << "Neighbors: " << neighbors.size() << std::endl;
+        //std::cout << "Neighbors: " << neighbors.size() << std::endl;
     }
     int node_id;
     point coordinate;

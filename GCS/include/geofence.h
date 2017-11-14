@@ -46,7 +46,7 @@ public:
   ~geofence();
   void set_fence(std::vector<point>);
   void set_fence(std::string);
-  void set_fence_csv(std::string geofence_path, bool inversed);
+  bool set_fence_csv(std::string geofence_path, bool inversed);
   void set_obstacles(std::vector<obstacle>);
   void set_obstacles(std::string);
   void set_max_altitude(double);

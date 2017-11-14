@@ -41,40 +41,50 @@ void geofence::set_fence(std::string geofence_path)
     }
 }
 
-void geofence::set_fence_csv(std::string geofence_path, bool inversed)
+bool geofence::set_fence_csv(std::string geofence_path, bool inversed)
 {
     std::ifstream geofence_file (geofence_path);
     std::string fieldValue, lat, lon;
     std::vector<point> fence_points;
 
-    while ( geofence_file.good())
+    if(geofence_file.good())
     {
-	    point temp_point;
-        std::getline ( geofence_file, lat, ',' ); 			// Read Lat
-        std::getline ( geofence_file, lon, '\n' ); 			// Read lon
-        if(geofence_file.eof()) // Makes sure we dont read the last line twice
-            break;
-        if(inversed)
+        while ( geofence_file.good())
         {
-            temp_point.lon = std::atof(lat.c_str());
-            temp_point.lat = std::atof(lon.c_str());
+    	    point temp_point;
+            std::getline ( geofence_file, lat, ',' ); 			// Read Lat
+            std::getline ( geofence_file, lon, '\n' ); 			// Read lon
+            if(geofence_file.eof()) // Makes sure we dont read the last line twice
+                break;
+            if(inversed)
+            {
+                temp_point.lon = std::atof(lat.c_str());
+                temp_point.lat = std::atof(lon.c_str());
+            }
+            else
+            {
+                temp_point.lat = std::atof(lat.c_str());
+                temp_point.lon = std::atof(lon.c_str());
+            }
+            fence_points.push_back(temp_point);
         }
-        else
-        {
-            temp_point.lat = std::atof(lat.c_str());
-            temp_point.lon = std::atof(lon.c_str());
-        }
-        fence_points.push_back(temp_point);
-    }
-    geofence_file.close();
-    set_fence(fence_points);
+        geofence_file.close();
+        set_fence(fence_points);
 
-    if(DEBUG)
-    {
-        std::cout << "Loaded geofence with points: lat lon" << std::endl;
-        for( int i = 0; i < fence_points.size(); i++)
-	        std::cout << (i+1) << ": " << fence_points[i].lat << " " << fence_points[i].lon << std::endl;
+        if(DEBUG)
+        {
+            std::cout << "Loaded geofence with points: lat lon" << std::endl;
+            for( int i = 0; i < fence_points.size(); i++)
+    	        std::cout << (i+1) << ": " << fence_points[i].lat << " " << fence_points[i].lon << std::endl;
+        }
     }
+    else
+    {
+        ROS_ERROR("Geofence error: could not find geofence file!");
+        return false;
+    }
+
+    return true;
 }
 
 void geofence::set_obstacles(std::string obstacle_path)

@@ -153,7 +153,7 @@ gcs::path Path_planner::plan_path(point start, point goal)
 {
 	gcs::path waypoint_path;
 
-	if(!fence->point_legal(start, UTM) && !fence->point_legal(goal, UTM))
+	if(!fence->point_legal(start, UTM) || !fence->point_legal(goal, UTM))
     //if(!fence->point_legal(start, LatLon) && !fence->point_legal(goal, LatLon))
     {
 		if(DEBUGGING) ROS_INFO("Start or goal coordinates are not within the geofence!");
@@ -175,18 +175,20 @@ gcs::path Path_planner::plan_path(point start, point goal)
     std::vector<Node*> path_nodes = a_star(&nodes[nodes.size() - 2], &nodes.back());
     if(DEBUGGING) ROS_INFO("A* pathplanning is finished.\n");
 
-    // Interpolate between waypoints, if the distance between is to big
-    //path_nodes = interpolate_path(path_nodes);
-
-    // Convert nodes into a path of waypoints and reverse it (because reconstruct path reverses it)
-    for(unsigned i = path_nodes.size(); i-- > 0; )
+    if(path_nodes.size())
     {
-        fence->UTM_to_geodetic(path_nodes[i]->coordinate);
-        if(DEBUGGING) path_nodes[i]->print_node();
-        waypoint_path.path.push_back(convert_node_to_waypoint(path_nodes[i]));
-    }
+        // Interpolate between waypoints, if the distance between is to big
+        path_nodes = interpolate_path(path_nodes);
 
-    return waypoint_path;   // Missing: check if this works OBS fix so it returns lat and long instead of UTM
+        // Convert nodes into a path of waypoints and reverse it (because reconstruct path reverses it)
+        for(unsigned i = path_nodes.size(); i-- > 0; )
+        {
+            fence->UTM_to_geodetic(path_nodes[i]->coordinate);
+            if(DEBUGGING) path_nodes[i]->print_node();
+            waypoint_path.path.push_back(convert_node_to_waypoint(path_nodes[i]));
+        }
+    }
+    return waypoint_path;
 }
 
 // Interpolate between waypoints, if the distance between is to big
@@ -196,35 +198,44 @@ std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
     for(unsigned int i = 0; i<nodes.size() - 1; i++)
     {
         // Create direction vector
-        nodes[i+1]->print_node();
-        nodes[i]->print_node();
+        //std::cout << std::endl;
+        //nodes[i]->print_node();
+        //nodes[i+1]->print_node();
         double vec_x = nodes[i+1]->coordinate.lat - nodes[i]->coordinate.lat;
         double vec_y = nodes[i+1]->coordinate.lon - nodes[i]->coordinate.lon;
-        double vec_z = nodes[i+1]->coordinate.alt - nodes[i]->coordinate.alt;
+        double vec_z = 0; //nodes[i+1]->coordinate.alt - nodes[i]->coordinate.alt;
         double length = std::sqrt(vec_x*vec_x + vec_y*vec_y + vec_z*vec_z);
 
         if(length > MAX_WAYPOINT_DISTANCE)
         {
             double x_temp, y_temp, z_temp;
-            int steps = length/MAX_WAYPOINT_DISTANCE;
+            double steps = floor(length/MAX_WAYPOINT_DISTANCE);
+            double step_size = steps/(length/MAX_WAYPOINT_DISTANCE);
+
+            //std::cout << "length: " << length << std::endl;
 
             new_path.push_back(nodes[i]);   // Push start point
-            std::cout << "x: " << vec_x << " y: " << vec_y << " z: " << vec_z << std::endl << std::endl;
+            //std::cout << "x: " << vec_x << " y: " << vec_y << " z: " << vec_z << std::endl;
 
             // Interpolate
-            int step = 0;
+            int step = 1;
             while(step <= steps)
             {
-                x_temp = nodes[i]->coordinate.lat + vec_x*( (double)step/(double)steps);
-                y_temp = nodes[i]->coordinate.lon + vec_y*((double)step/(double)steps);
-                z_temp = nodes[i]->coordinate.alt + vec_z*((double)step/(double)steps);
-                Node temp_node;
-                temp_node.coordinate.lat = x_temp;
-                temp_node.coordinate.lon = y_temp;
-                temp_node.coordinate.alt = z_temp;
-                new_path.push_back(&temp_node);
+                //std::cout << "Steps: " << steps << " step: " << step << std::endl;
+                x_temp = nodes[i]->coordinate.lat + vec_x*step_size*step; //( (double)step/(double)steps);
+                y_temp = nodes[i]->coordinate.lon + vec_y*step_size*step; //((double)step/(double)steps);
+                z_temp = nodes[i]->coordinate.alt + vec_z*step_size*step; //((double)step/(double)steps);
+                //Node temp_node;
+                Node *temp_node = new Node; // Missing: The allocated space needs to be deleted again???
+                temp_node->coordinate.lat = x_temp;
+                temp_node->coordinate.lon = y_temp;
+                temp_node->coordinate.alt = z_temp;
+                temp_node->node_id = 1990;
+                //std::cout << "Temp node: " << std::endl;
+                //temp_node->print_node();
+                //std::cout << std::endl;
+                new_path.push_back(temp_node);
                 step++;
-                std::cout << "Steps: " << steps << " step: " << step << std::endl;
             }
             //new_path.push_back(nodes[i+1]); // Push end point
         }

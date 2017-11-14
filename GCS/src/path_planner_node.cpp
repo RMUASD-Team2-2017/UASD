@@ -14,6 +14,7 @@
 #include "gcs/planPath.h"
 #include "gcs/waypoint.h"
 #include "gcs/path.h"
+#include <ros/package.h>
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -34,9 +35,13 @@ bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Respons
     start = req.origin;
     goal = req.goal;
 
+    /*
+    std::string geofence_file;
+    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/geofence.csv");
+    std::cout << geofence_file << std::endl;*/
+
     ROS_INFO("Path planning started");
     gcs::path plannedPath = planPath();
-    ROS_INFO("Path planning has finished");
 
     if(plannedPath.path.size())
     {
@@ -49,77 +54,49 @@ bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Respons
         res.result = 0;
         ROS_INFO("Pathplanning failed!");
     }
-
-
-    /*
-    if(isPlanning)
-	{
-		res.result = planning_succeded;
-	}
-	else
-	{
-		start = req.origin;
-		goal = req.goal;
-		isPlanning = true;
-		res.result = 0;
-	}*/
 }
-
-/*
-void planPath()
-{
-	// NOTE: Implement a better path planner and use geofence
-	origin_temp.alt = CRUISE_HEIGHT;
-	origin_temp.type = TAKEOFF;
-	plannedPath.path.push_back(origin_temp);
-	gcs::waypoint goal_temp = goal;
-	goal.alt = CRUISE_HEIGHT;
-	goal.type = WAYPOINT;
-	plannedPath.path.push_back(goal);
-	gcs::waypoint goal_land = goal;
-	goal_land.alt = 0;
-	goal_land.type = LAND;
-	plannedPath.path.push_back(goal_land);
-	pathPublisher.publish(plannedPath);
-	isPlanning = false;
-}*/
 
 gcs::path planPath()
 {
+    gcs::path planned_path;
     geofence fence;
     Path_planner planner(fence);
     fence.set_max_altitude(200.0);
     //fence.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfence.csv", false); // Testfence
-    fence.set_fence_csv("/home/tobias/Dropbox/RobTek/Cand_3_semester/Unmanned Aerial System Design/UASD/GCS/src/fences/geofence.csv", true);
-    planner.set_nodes(fence.get_fence());
 
-    point start_point, goal_point;
-    start_point.lat = 55.561142;//55.554453;//start.lat;
-    start_point.lon = 10.113039;//10.112788;//start.lon;
-    start_point.alt = 0.0;
-    goal_point.lat =   55.565114;//goal.lat;
-    goal_point.lon =  10.121754;///goal.lon;
-    goal_point.alt = 0.0;
 
-    std::cout << start_point.lat << " " << start_point.lon << std::endl;
-    std::cout << goal_point.lat << " " << goal_point.lon << std::endl;
+    bool fence_load_sucess= fence.set_fence_csv("/home/tobias/Dropbox/RobTek/Cand_3_semester/Unmanned Aerial System Design/UASD/GCS/src/fences/geofence.csv", true);
 
-    fence.geodetic_to_UTM(start_point);
-    fence.geodetic_to_UTM(goal_point);
-
-    // Plan path
-    gcs::path planned_path = planner.plan_path(start_point,goal_point);
-
-    if(planned_path.path.size())
+    if(fence_load_sucess)
     {
-        planned_path.path[0].alt = CRUISE_HEIGHT;
-        planned_path.path[0].type = TAKEOFF;
+        planner.set_nodes(fence.get_fence());
 
-        planned_path.path.back().alt = 0;
-    	planned_path.path.back().type = LAND;
+        point start_point, goal_point;
+        start_point.lat = /*55.554359;//*/start.lat;
+        start_point.lon = /*10.113565;//*/start.lon;
+        start_point.alt = 0.0;
+        goal_point.lat =  /*55.567094;//*/goal.lat;
+        goal_point.lon =  /*10.121619;///*/goal.lon;
+        goal_point.alt = 0.0;
+
+        //std::cout << start_point.lat << " " << start_point.lon << std::endl;
+        //std::cout << goal_point.lat << " " << goal_point.lon << std::endl;
+
+        fence.geodetic_to_UTM(start_point);
+        fence.geodetic_to_UTM(goal_point);
+
+        // Plan path
+        planned_path = planner.plan_path(start_point,goal_point);
+        if(planned_path.path.size())
+        {
+            planned_path.path[0].alt = CRUISE_HEIGHT;   // Make the first waypoint a takeoff type
+            planned_path.path[0].type = TAKEOFF;
+
+            planned_path.path.back().alt = 0;
+        	planned_path.path.back().type = LAND;  // Make the last waypoint a landing type
+        }
     }
 
-    //isPlanning = false;
     return planned_path;
 }
 
@@ -132,23 +109,12 @@ int main(int argc, char** argv)
     ros::ServiceServer planPathService = n.advertiseService("/path_planner/plan",callbackPlanPathService);
 
     // Only for testing
-    gcs::path plannedPath = planPath();
+    //gcs::path plannedPath = planPath();
 
 	ros::Rate rate(20);
 
 	while(ros::ok())
 	{
-        /*
-		if(isPlanning)
-        {
-            std::cout << "Path planning started!" << std::endl;
-            gcs::path plannedPath = planPath();
-            std::cout << "Path planning completed!" << std::endl;
-            if(planned_path.path.size())
-                pathPublisher.publish(plannedPath);
-
-        }*/
-
 		ros::spinOnce();
 		rate.sleep();
 	}
