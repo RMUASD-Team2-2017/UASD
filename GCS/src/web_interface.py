@@ -107,7 +107,6 @@ class web_interface:
             if not complete:
                 time.sleep(1)
 
-
         print '#################################################################################'
         print self.username, self.password
         print self.request_id
@@ -143,7 +142,6 @@ class web_interface:
                 print 'Unexpected error in set_mission_done'
             if not complete:
                 time.sleep(1)
-
 
         print '#################################################################################'
         print 'Preflight information transmitted'
