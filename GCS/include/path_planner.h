@@ -11,7 +11,6 @@
 #include "gcs/waypoint.h"
 #include "gcs/path.h"
 
-#define CRUISE_HEIGHT 5
 #define TAKEOFF 0
 #define WAYPOINT 1
 #define LAND 2
@@ -83,7 +82,7 @@ struct Vect
 class Path_planner
 {
     public:
-        Path_planner(geofence &fence);
+        Path_planner(geofence &fence, double cruice_height, double max_waypoint_distance, double fence_shrink_meters);
         gcs::path plan_path(point start, point goal);
         void set_nodes(std::vector<point> points);
         void print_nodes();
@@ -103,4 +102,7 @@ class Path_planner
         gcs::waypoint convert_node_to_waypoint(Node *node);
         geofence *fence;
         std::vector<Node> nodes;
+        double cruice_height;
+        double max_waypoint_distance;
+        double fence_shrink_meters;
 };

@@ -4,13 +4,13 @@
 #include <iostream>
 
 #define DEBUGGING true
-#define SHRINK_FACTOR 0.90F
-#define SHRINK_METERS 1.0F
-#define MAX_WAYPOINT_DISTANCE 900
 
-Path_planner::Path_planner(geofence &fence)
+Path_planner::Path_planner(geofence &fence, double cruice_height, double max_waypoint_distance, double fence_shrink_meters)
 {
     this->fence = &fence;
+    this->cruice_height = cruice_height;
+    this->max_waypoint_distance = max_waypoint_distance;
+    this->fence_shrink_meters = fence_shrink_meters;
 }
 
 void Path_planner::set_nodes(std::vector<point> points)
@@ -133,7 +133,7 @@ std::vector<Node*> Path_planner::a_star(Node *start, Node *goal)
             current->neighbors[i]->fscore = tentative_gscore + heuristic_dist(current->neighbors[i], goal);
         }
     }
-    if(DEBUGGING)  ROS_INFO("A* pathplanner failed in finding a path!");
+    if(DEBUGGING)  ROS_ERROR("A* pathplanner failed in finding a path!");
     return std::vector<Node*>();    // Returns empty vector when pathplanning fails
     // Missing make sure this works
 }
@@ -143,7 +143,7 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
     gcs::waypoint point;
     point.lat = node->coordinate.lat;
     point.lon = node->coordinate.lon;
-    point.alt = CRUISE_HEIGHT;//node->coordinate.alt;
+    point.alt = cruice_height;//node->coordinate.alt;
     point.type = WAYPOINT;
         //goal.alt = ;
     return point;
@@ -156,12 +156,12 @@ gcs::path Path_planner::plan_path(point start, point goal)
 	if(!fence->point_legal(start, UTM) || !fence->point_legal(goal, UTM))
     //if(!fence->point_legal(start, LatLon) && !fence->point_legal(goal, LatLon))
     {
-		if(DEBUGGING) ROS_INFO("Start or goal coordinates are not within the geofence!");
+		if(DEBUGGING) ROS_ERROR("Start or goal coordinates are not within the geofence!");
 		return waypoint_path;	// Remember to look at this in the node
 	}
 
     if(DEBUGGING) ROS_INFO("Shrinking the polygon...\n");
-    shrink_polygon2(SHRINK_METERS);
+    shrink_polygon2(fence_shrink_meters);
     //export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
 
     nodes.push_back(Node(start, -1));
@@ -206,11 +206,11 @@ std::vector<Node*> Path_planner::interpolate_path(std::vector<Node*> nodes)
         double vec_z = 0; //nodes[i+1]->coordinate.alt - nodes[i]->coordinate.alt;
         double length = std::sqrt(vec_x*vec_x + vec_y*vec_y + vec_z*vec_z);
 
-        if(length > MAX_WAYPOINT_DISTANCE)
+        if(length > max_waypoint_distance)
         {
             double x_temp, y_temp, z_temp;
-            double steps = floor(length/MAX_WAYPOINT_DISTANCE);
-            double step_size = steps/(length/MAX_WAYPOINT_DISTANCE);
+            double steps = floor(length/max_waypoint_distance);
+            double step_size = steps/(length/max_waypoint_distance);
 
             //std::cout << "length: " << length << std::endl;
 

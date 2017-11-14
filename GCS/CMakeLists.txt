@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
   mavros_msgs
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions

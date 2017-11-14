@@ -16,6 +16,11 @@
 #include "gcs/path.h"
 #include <ros/package.h>
 
+// Defines
+#define MAX_WAYPOINT_DISTANCE 900.0
+#define SHRINK_METERS 1.0F
+#define CRUISE_HEIGHT 5.0
+
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
 
@@ -35,11 +40,6 @@ bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Respons
     start = req.origin;
     goal = req.goal;
 
-    /*
-    std::string geofence_file;
-    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/geofence.csv");
-    std::cout << geofence_file << std::endl;*/
-
     ROS_INFO("Path planning started");
     gcs::path plannedPath = planPath();
 
@@ -52,7 +52,7 @@ bool callbackPlanPathService(gcs::planPath::Request &req, gcs::planPath::Respons
     else
     {
         res.result = 0;
-        ROS_INFO("Pathplanning failed!");
+        ROS_ERROR("Pathplanning failed!");
     }
 }
 
@@ -60,15 +60,19 @@ gcs::path planPath()
 {
     gcs::path planned_path;
     geofence fence;
-    Path_planner planner(fence);
+    Path_planner planner(fence, CRUISE_HEIGHT, MAX_WAYPOINT_DISTANCE, SHRINK_METERS);
     fence.set_max_altitude(200.0);
-    //fence.set_fence_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfence.csv", false); // Testfence
 
+    // Find the path to the geofence file
+    std::string geofence_file;
+    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/fences/geofence.csv");
 
-    bool fence_load_sucess= fence.set_fence_csv("/home/tobias/Dropbox/RobTek/Cand_3_semester/Unmanned Aerial System Design/UASD/GCS/src/fences/geofence.csv", true);
+    // Load geofence file
+    bool fence_load_sucess= fence.set_fence_csv(geofence_file, true);
 
     if(fence_load_sucess)
     {
+        // Set geofence points as nodes in the pathplanner
         planner.set_nodes(fence.get_fence());
 
         point start_point, goal_point;
@@ -76,7 +80,7 @@ gcs::path planPath()
         start_point.lon = /*10.113565;//*/start.lon;
         start_point.alt = 0.0;
         goal_point.lat =  /*55.567094;//*/goal.lat;
-        goal_point.lon =  /*10.121619;///*/goal.lon;
+        goal_point.lon =  /*10.121619;//*/goal.lon;
         goal_point.alt = 0.0;
 
         //std::cout << start_point.lat << " " << start_point.lon << std::endl;
