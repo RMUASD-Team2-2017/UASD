@@ -34,12 +34,13 @@ class GpsMonitor(StoppableThread):
     LOST_TIME_VALUE = 10
     MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 50
 
-    def __init__(self, signal_function, get_external_pos, get_internal_pos, geofencefile = None, rate = 1):
+    def __init__(self, signal_function, get_external_pos, get_internal_pos, get_internal_home_pos, geofencefile = None, rate = 1):
         StoppableThread.__init__(self)
         self.name = 'GpsMonitor'
         self.signal = signal_function
         self.get_external_pos = get_external_pos
         self.get_internal_pos = get_internal_pos
+        self.get_internal_home_pos = get_internal_home_pos
         self.rate = rate
         self.geofence = None
         if geofencefile is not None:
@@ -52,6 +53,7 @@ class GpsMonitor(StoppableThread):
         while self.stop_event.is_set() is False:
             external_pos = self.get_external_pos()
             internal_pos = self.get_internal_pos()
+            internal_home_pos = self.get_internal_home_pos()
 
             # Check if a fix is obtained
             # We don't execute the checks below before we have a fix.
@@ -81,11 +83,10 @@ class GpsMonitor(StoppableThread):
                 external_pos_utm = utm.from_latlon(external_pos['position']['lat'], external_pos['position']['lng'])
                 internal_pos_utm = utm.from_latlon(internal_pos['position']['lat'], internal_pos['position']['lng'])
                 dist = sqrt((external_pos_utm[0]-internal_pos_utm[0])**2 + \
-                       (external_pos_utm[1]-internal_pos_utm[1])**2 + \
-                       (external_pos['position']['alt'] - internal_pos['position']['alt'])**2)
+                       (external_pos_utm[1]-internal_pos_utm[1])**2)
                 if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE:
                     if not self.geofence is None:
-                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt'])):
+                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['position']['alt'])):
                             self.signal(GpsMonitor.STATE_OK)
                         else:
                             self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)

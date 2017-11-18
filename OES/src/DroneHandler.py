@@ -27,6 +27,8 @@ class DroneHandler():
     STATE_OK = 'HEARTBEAT_OK'
     STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
     MANUAL_MODE = 'MANUAL'
+    GPS_FIX_TYPE_2D_FIX = 2
+    GPS_FIX_TYPE_3D_FIX = 3
     def __init__(self,port,baud,signal_queue):
         # TODO: Add baud= for a real drone
         # Connect to the drone
@@ -41,6 +43,7 @@ class DroneHandler():
         self.vehicle.class_access_hack = self # Inspired by group 1. Hack to access class from decorator callbacks
         self.signal = signal_queue
         self.mode = None
+        self.home_position = None
 
         logger.info('DroneHandler started')
 
@@ -61,7 +64,11 @@ class DroneHandler():
                                  'DOP': dop,
                                  'satellites': self.gps_0.satellites_visible
                                  }
-                #self.class_access_hack.signal(self.position)
+                self.class_access_hack.signal(self.position)
+                if self.class_access_hack.home_position is None \
+                        and self.class_access_hack.mode == 'MANUAL'\
+                        and self.self.gps_0.fix_type > DroneHandler.GPS_FIX_TYPE_2D_FIX:
+                    self.class_access_hack.home_position = position
 
         @self.vehicle.on_message('HEARTBEAT')
         def listener(self, name, message):
@@ -82,6 +89,10 @@ class DroneHandler():
     def get_position(self):
         with self.lock:
             return self.position
+
+    def get_home_position(self):
+        with self.lock:
+            return self.home_position
 
     def get_heartbeat(self):
         with self.lock:
