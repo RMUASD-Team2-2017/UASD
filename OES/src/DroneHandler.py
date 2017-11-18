@@ -67,7 +67,7 @@ class DroneHandler():
                 self.class_access_hack.signal(self.position)
                 if self.class_access_hack.home_position is None \
                         and self.class_access_hack.mode == 'MANUAL'\
-                        and self.self.gps_0.fix_type > DroneHandler.GPS_FIX_TYPE_2D_FIX:
+                        and self.gps_0.fix_type > DroneHandler.GPS_FIX_TYPE_2D_FIX:
                     self.class_access_hack.home_position = position
 
         @self.vehicle.on_message('HEARTBEAT')
