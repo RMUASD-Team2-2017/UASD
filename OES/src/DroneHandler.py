@@ -77,7 +77,7 @@ class DroneHandler():
                 self.class_access_hack.last_heartbeat = time.time()
 
         @self.vehicle.on_attribute('mode')
-        def mode_listener(seself, attr_name, value):
+        def mode_listener(self, attr_name, value):
             with self.class_access_hack.lock:
                 self.class_access_hack.mode = value
                 logger.debug('Mode %s',value)
