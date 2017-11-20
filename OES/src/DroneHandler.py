@@ -84,7 +84,8 @@ class DroneHandler():
 
     def get_mode(self):
         with self.lock:
-            return self.mode
+            #return self.mode
+            return self.vehicle.mode
 
     def get_position(self):
         with self.lock:
