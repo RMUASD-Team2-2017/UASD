@@ -35,7 +35,7 @@ class DroneHandler():
         #   Try to reconnect forever (100 years)
         #   Update rate 4 Hz
         #   wait_ready=True: Block connect until all mandatory parameters are fetched
-        self.vehicle = connect(port, rate=4, wait_ready=True, source_system=1,heartbeat_timeout=forever)
+        self.vehicle = connect(port, baud=baud, rate=4, wait_ready=False, source_system=1,heartbeat_timeout=forever)
         self.position = None
         # Dronekit does not seem to be thread safe. Lock everything just in case
         #   Ref: https://groups.google.com/forum/#!msg/drones-discuss/PvgF7AiYLmI/sw4BuglTHAAJ
@@ -64,9 +64,9 @@ class DroneHandler():
                                  'DOP': dop,
                                  'satellites': self.gps_0.satellites_visible
                                  }
-                self.class_access_hack.signal(self.position)
                 if self.class_access_hack.home_position is None \
-                        and self.class_access_hack.mode == 'MANUAL'\
+                        and ( self.class_access_hack.mode == None \
+                        or self.class_access_hack.mode == 'MANUAL')\
                         and self.gps_0.fix_type > DroneHandler.GPS_FIX_TYPE_2D_FIX:
                     self.class_access_hack.home_position = position
 
@@ -132,7 +132,9 @@ def main():
     drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
     while True:
         time.sleep(1)
-        print drone_handler.get_mode()
+        print 'Mode', drone_handler.get_mode()
+        print 'Position', drone_handler.get_position()
+        print 'Home position', drone_handler.get_home_position()
 
 
 if __name__ == "__main__":
