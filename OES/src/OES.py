@@ -5,7 +5,7 @@ import logging
 import json
 from GpsModule import GpsModule
 from GpsMonitor import GpsMonitor
-from DroneHandler import DroneHandler
+from DroneHandler import DroneHandler, DroneHandler_pymavlink
 from OnboardControl import OnboardControl
 from ConnectionMonitor import ConnectionMonitor, MavlinkListener
 from GsmHandler import GsmReceiver, GsmTalker
@@ -51,7 +51,7 @@ def main():
     drone_handler_signal_queue = Queue()
     external_gps_module = GpsModule('/dev/ttyACM0',9600)
     external_gps_module.start()
-    drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue) # NOTE: The bad must be implemented in instantiation of dronekit
+    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540',drone_handler_signal_queue,115200) # NOTE: The bad must be implemented in instantiation of dronekit
     onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, command_queue, rate = 1)
     gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position, drone_handler.get_home_position,
                              geofencefile="/home/mathias/Dropbox/ROBTEK/9.-semester/RMUASD/UASD_share/geofence/geofence.txt")
