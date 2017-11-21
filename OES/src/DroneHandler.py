@@ -125,12 +125,30 @@ class DroneHandler():
         logger.info('DroneHandler terminating')
 
 
+def convert_from_1e7(number):
+    return convert_from_1ex(number, 7)
+
+
+def convert_from_1ex(number,exponent):
+    return float(number)/float(10**exponent)
+
+
 class DroneHandler_pymavlink(StoppableThread):
-    def __init__(self,port,baud=None):
+    GPS_FIX_TYPE_2D_FIX = 2
+
+    def __init__(self,port, signal_queue, baud=None):
         StoppableThread.__init__(self)
+        self.signal = signal_queue
         self.heartbeat = None
         self.heartbeat_lock = threading.Lock()
+        self.position_lock = threading.Lock()
+        self.mode_lock = threading.Lock()
+
         self.mav_interface = None
+        self.mode = None
+        self.position = None
+        self.home_position = None
+
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
         else:
@@ -138,15 +156,38 @@ class DroneHandler_pymavlink(StoppableThread):
 
     def run(self):
         while self.stop_event.is_set() is False:
+
+            # Receive messages
             m = self.mav_interface.recv_msg()
             if m:
-                if (m.get_type() == 'HEARTBEAT'):
-                    logger.warning('Heartbeat')
+                if m.get_type() == 'HEARTBEAT':
+                    logger.debug('Heartbeat')
                     with self.heartbeat_lock:
                         self.heartbeat = time.time()
-                if (m.get_type() == 'GPS_RAW_INT'):
-                    logger.warning('GPS_RAW_INT')
-
+                    self.signal.put(time.time())
+                    with self.mode_lock:
+                        self.mode = mavutil.interpret_px4_mode(m.base_mode, m.custom_mode)
+                if m.get_type() == 'GPS_RAW_INT':
+                    logger.debug('GPS_RAW_INT')
+                    msg = m.to_dict()
+                    position = {
+                        'lat': convert_from_1e7(msg['lat']),
+                        'lng': convert_from_1e7(msg['lon']),
+                        'alt': convert_from_1ex(msg['alt'],3)
+                    }
+                    dop = {'HDOP': msg['eph'],
+                           'VDOP': msg['epv']}
+                    with self.position_lock:
+                        self.position = {'timestamp': time.time(),
+                                         'position': position,
+                                         'fix_type': msg['fix_type'],
+                                         'DOP': dop,
+                                         'satellites': msg['satellites_visible']
+                                         }
+                        if self.home_position is None \
+                                and msg['fix_type'] > DroneHandler.GPS_FIX_TYPE_2D_FIX:
+                            logger.debug(' Home position set')
+                            self.home_position = position
 
             # Avoid busy loop
             time.sleep(0.001)
@@ -155,6 +196,38 @@ class DroneHandler_pymavlink(StoppableThread):
         with self.heartbeat_lock:
             return self.heartbeat
 
+    def get_mode(self):
+        with self.mode_lock:
+            return self.mode
+
+
+    def get_position(self):
+        with self.position_lock:
+            return self.position
+
+    def get_home_position(self):
+        with self.position_lock:
+            return self.home_position
+
+    def terminate_flight(self):
+        logger.info('Terminate flight')
+        self.mav_interface.arducopter_disarm()
+
+    def return_to_launch(self):
+        logger.info('RTL')
+        self.mav_interface.set_mode('RTL')
+
+    def land_at_current_location(self):
+        logger.info('Land')
+        self.mav_interface.set_mode('LAND')
+
+    def loiter(self):
+        logger.info('Loiter')
+        self.mav_interface.set_mode('LOITER')
+
+    def resume_mission(self):
+        logger.info('Resume mission')
+        self.mav_interface.set_mode('MISSION')
 
 
 def main():
@@ -174,12 +247,18 @@ def main_pymavlink():
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
     logger.info('Started')
-    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540')
+    drone_handler_signal_queue = Queue()
+    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540',drone_handler_signal_queue)
     drone_handler.start()
+
     do_exit = False
     while do_exit == False:
         try:
-            time.sleep(0.1)
+            time.sleep(1)
+            print 'Mode', drone_handler.get_mode()
+            print 'Position', drone_handler.get_position()
+            print 'Home position', drone_handler.get_home_position()
+            drone_handler.resume_mission()
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
             do_exit = True
