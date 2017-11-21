@@ -27,13 +27,15 @@ class DroneHandler():
     STATE_OK = 'HEARTBEAT_OK'
     STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
     MANUAL_MODE = 'MANUAL'
+    GPS_FIX_TYPE_2D_FIX = 2
+    GPS_FIX_TYPE_3D_FIX = 3
     def __init__(self,port,baud,signal_queue):
         # TODO: Add baud= for a real drone
         # Connect to the drone
         #   Try to reconnect forever (100 years)
         #   Update rate 4 Hz
         #   wait_ready=True: Block connect until all mandatory parameters are fetched
-        self.vehicle = connect(port, rate=4, wait_ready=True, source_system=1,heartbeat_timeout=forever)
+        self.vehicle = connect(port, baud=baud, rate=4, wait_ready=False, source_system=1,heartbeat_timeout=forever)
         self.position = None
         # Dronekit does not seem to be thread safe. Lock everything just in case
         #   Ref: https://groups.google.com/forum/#!msg/drones-discuss/PvgF7AiYLmI/sw4BuglTHAAJ
@@ -41,6 +43,7 @@ class DroneHandler():
         self.vehicle.class_access_hack = self # Inspired by group 1. Hack to access class from decorator callbacks
         self.signal = signal_queue
         self.mode = None
+        self.home_position = None
 
         logger.info('DroneHandler started')
 
@@ -61,7 +64,11 @@ class DroneHandler():
                                  'DOP': dop,
                                  'satellites': self.gps_0.satellites_visible
                                  }
-                #self.class_access_hack.signal(self.position)
+                if self.class_access_hack.home_position is None \
+                        and ( self.class_access_hack.mode == None \
+                        or self.class_access_hack.mode == 'MANUAL')\
+                        and self.gps_0.fix_type > DroneHandler.GPS_FIX_TYPE_2D_FIX:
+                    self.class_access_hack.home_position = position
 
         @self.vehicle.on_message('HEARTBEAT')
         def listener(self, name, message):
@@ -70,18 +77,23 @@ class DroneHandler():
                 self.class_access_hack.last_heartbeat = time.time()
 
         @self.vehicle.on_attribute('mode')
-        def mode_listener(seself, attr_name, value):
+        def mode_listener(self, attr_name, value):
             with self.class_access_hack.lock:
                 self.class_access_hack.mode = value
                 logger.debug('Mode %s',value)
 
     def get_mode(self):
         with self.lock:
-            return self.mode
+            #return self.mode
+            return self.vehicle.mode
 
     def get_position(self):
         with self.lock:
             return self.position
+
+    def get_home_position(self):
+        with self.lock:
+            return self.home_position
 
     def get_heartbeat(self):
         with self.lock:
@@ -121,7 +133,9 @@ def main():
     drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
     while True:
         time.sleep(1)
-        print drone_handler.get_mode()
+        print 'Mode', drone_handler.get_mode()
+        print 'Position', drone_handler.get_position()
+        print 'Home position', drone_handler.get_home_position()
 
 
 if __name__ == "__main__":

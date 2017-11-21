@@ -2,6 +2,8 @@
 import pika
 
 parameters = pika.URLParameters('amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx')
+parameters.socket_timeout = 1000
+parameters.blocked_connection_timeout = 1000
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 

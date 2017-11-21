@@ -162,7 +162,7 @@ gcs::path Path_planner::plan_path(point start, point goal)
 
     if(DEBUGGING) ROS_INFO("Shrinking the polygon...\n");
     shrink_polygon2(fence_shrink_meters);
-    //export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
+    export_as_csv("/home/tobias/drone_ws/src/UASD_GCS/src/fences/testfile.txt");
 
     nodes.push_back(Node(start, -1));
     nodes.push_back(Node(goal, -2));

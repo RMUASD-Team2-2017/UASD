@@ -10,7 +10,7 @@ from OnboardControl import OnboardControl
 from ConnectionMonitor import ConnectionMonitor, MavlinkListener
 from GsmHandler import GsmReceiver, GsmTalker
 from Queue import Queue
-
+from WebInterface import WebInterface
 
 ## Global queues ###
 external_gps_queue = Queue()
@@ -46,20 +46,20 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
     logger.info('OES started')
-    gsm_command_queue = Queue()
+    command_queue = Queue()
     gsm_transmit_queue = Queue()
     drone_handler_signal_queue = Queue()
     external_gps_module = GpsModule('/dev/ttyACM0',9600)
     external_gps_module.start()
-    drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue)
-    onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, gsm_command_queue, rate = 1)
-    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position,
+    drone_handler = DroneHandler('127.0.0.1:14540',115200,drone_handler_signal_queue) # NOTE: The bad must be implemented in instantiation of dronekit
+    onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, command_queue, rate = 1)
+    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position, drone_handler.get_home_position,
                              geofencefile="/home/mathias/Dropbox/ROBTEK/9.-semester/RMUASD/UASD_share/geofence/geofence.txt")
     gps_monitor.start()
 
     # GsmHandler
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    gsm_listener = GsmReceiver(pika_connection_string,gsm_command_queue)
+    gsm_listener = GsmReceiver(pika_connection_string,command_queue)
     gsm_listener.start()
     #gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
     #gsm_talker.start()
@@ -77,6 +77,9 @@ def main():
                                            gsm_listener.get_heartbeat, get_hb_drone_serial2=drone_handler.get_heartbeat)
 
     connection_monitor.start()
+
+    web_interface = WebInterface(command_queue)
+    web_interface.start()
 
     # Start the control
     onboard_control.start()
@@ -97,6 +100,7 @@ def main():
     #gsm_talker.stop()
     #sniff_to_drone.stop()
     connection_monitor.stop()
+    web_interface.stop()
     print threading.enumerate()
     logger.info('OES terminated')
 

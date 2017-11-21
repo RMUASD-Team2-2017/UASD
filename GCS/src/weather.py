@@ -45,6 +45,9 @@ class Weather:
     def getHumidity(self):
         return self.data["location"]["humidity"]["@value"]
 
+    # def getPrecipitation(self): # This doesn't seem to be working
+    #     return self.data["location"]["precipitation"]["@value"]
+
     def printData(self):
         print self.data
 

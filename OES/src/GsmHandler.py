@@ -32,6 +32,8 @@ class GsmReceiver(StoppableThread):
 
         # Pika setup
         parameters = pika.URLParameters(pika_connection_string)
+        parameters.socket_timeout = 1000
+        parameters.blocked_connection_timeout = 1000
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
         # Connect with the queue
@@ -78,6 +80,8 @@ class GsmTalker(StoppableThread):
         self.heartbeat_timer = None
 
         parameters = pika.URLParameters(pika_connection_string)
+        parameters.socket_timeout = 1000
+        parameters.blocked_connection_timeout = 1000
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.topic)
