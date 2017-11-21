@@ -9,17 +9,17 @@ forever = 60*60*24*365*100
 
 logger = logging.getLogger(__name__)
 
-#class StoppableThread(threading.Thread):
-#    def __init__(self):
-#        threading.Thread.__init__(self)
-#        self.stop_event = threading.Event()
-#
-#    def stop(self):
-#        if self.isAlive() == True:
-#            # set event to signal thread to terminate
-#            self.stop_event.set()
-#            # block calling thread until thread really has terminated
-#            self.join()
+class StoppableThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.stop_event = threading.Event()
+
+    def stop(self):
+        if self.isAlive() == True:
+            # set event to signal thread to terminate
+            self.stop_event.set()
+            # block calling thread until thread really has terminated
+            self.join()
 
 
 class DroneHandler():
@@ -125,6 +125,38 @@ class DroneHandler():
         logger.info('DroneHandler terminating')
 
 
+class DroneHandler_pymavlink(StoppableThread):
+    def __init__(self,port,baud=None):
+        StoppableThread.__init__(self)
+        self.heartbeat = None
+        self.heartbeat_lock = threading.Lock()
+        self.mav_interface = None
+        if baud is None:
+            self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
+        else:
+            self.mav_interface = mavutil.mavlink_connection(port, baud=baud, autoreconnect=True)
+
+    def run(self):
+        while self.stop_event.is_set() is False:
+            m = self.mav_interface.recv_msg()
+            if m:
+                if (m.get_type() == 'HEARTBEAT'):
+                    logger.warning('Heartbeat')
+                    with self.heartbeat_lock:
+                        self.heartbeat = time.time()
+                if (m.get_type() == 'GPS_RAW_INT'):
+                    logger.warning('GPS_RAW_INT')
+
+
+            # Avoid busy loop
+            time.sleep(0.001)
+
+    def get_heartbeat(self):
+        with self.heartbeat_lock:
+            return self.heartbeat
+
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -138,5 +170,20 @@ def main():
         print 'Home position', drone_handler.get_home_position()
 
 
+def main_pymavlink():
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.info('Started')
+    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540')
+    drone_handler.start()
+    do_exit = False
+    while do_exit == False:
+        try:
+            time.sleep(0.1)
+        except KeyboardInterrupt:
+            # Ctrl+C was hit - exit program
+            do_exit = True
+    drone_handler.stop()
+
 if __name__ == "__main__":
-    main()
+    main_pymavlink()
