@@ -143,11 +143,13 @@ class DroneHandler_pymavlink(StoppableThread):
         self.heartbeat_lock = threading.Lock()
         self.position_lock = threading.Lock()
         self.mode_lock = threading.Lock()
+        self.current_waypoint_lock = threading.Lock()
 
         self.mav_interface = None
         self.mode = None
         self.position = None
         self.home_position = None
+        self.current_waypoint = None
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -188,6 +190,10 @@ class DroneHandler_pymavlink(StoppableThread):
                                 and msg['fix_type'] > DroneHandler.GPS_FIX_TYPE_2D_FIX:
                             logger.debug(' Home position set')
                             self.home_position = position
+                if m.get_type() == 'MISSION_CURRENT':
+                    with self.current_waypoint_lock:
+                        self.current_waypoint = msg['seq']
+                        logger.debug('Current waypoint %s', msg['seq'])
 
             # Avoid busy loop
             time.sleep(0.001)
@@ -199,7 +205,6 @@ class DroneHandler_pymavlink(StoppableThread):
     def get_mode(self):
         with self.mode_lock:
             return self.mode
-
 
     def get_position(self):
         with self.position_lock:
