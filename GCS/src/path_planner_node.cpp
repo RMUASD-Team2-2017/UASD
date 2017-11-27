@@ -92,13 +92,11 @@ gcs::path planPath()
             planned_path.path[0].alt = CRUISE_HEIGHT;   // Make the first waypoint a takeoff type
             planned_path.path[0].type = TAKEOFF;
 
-            if(planned_path.path.size() == 2)   // Add an extra waypoint
-            {
-                gcs::waypoint point = planned_path.path.back();
-                planned_path.path.back().alt = CRUISE_HEIGHT;
-            	planned_path.path.back().type = WAYPOINT;
-                planned_path.path.push_back(point);
-            }
+            // Add an extra waypoint
+            gcs::waypoint point = planned_path.path.back();
+            planned_path.path.back().alt = CRUISE_HEIGHT;
+        	planned_path.path.back().type = WAYPOINT;
+            planned_path.path.push_back(point);
 
             planned_path.path.back().alt = 0;
         	planned_path.path.back().type = LAND;  // Make the last waypoint a landing type
