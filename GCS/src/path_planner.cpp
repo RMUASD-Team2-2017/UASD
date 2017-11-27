@@ -143,9 +143,9 @@ gcs::waypoint Path_planner::convert_node_to_waypoint(Node *node)
     gcs::waypoint point;
     point.lat = node->coordinate.lat;
     point.lon = node->coordinate.lon;
-    point.alt = cruice_height;//node->coordinate.alt;
+    point.alt = cruice_height;
     point.type = WAYPOINT;
-        //goal.alt = ;
+
     return point;
 }
 
