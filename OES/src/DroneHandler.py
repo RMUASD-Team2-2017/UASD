@@ -135,6 +135,12 @@ def convert_from_1ex(number,exponent):
 
 class DroneHandler_pymavlink(StoppableThread):
     GPS_FIX_TYPE_2D_FIX = 2
+    ARMED_FLAG = 0b10000000
+    STATE_IDLE = 0
+    STATE_TAKEOFF = 1
+    STATE_ENROUTE = 2
+    STATE_LANDING = 3
+    STATE_LANDED = 4
 
     def __init__(self,port, signal_queue, baud=None):
         StoppableThread.__init__(self)
@@ -143,13 +149,18 @@ class DroneHandler_pymavlink(StoppableThread):
         self.heartbeat_lock = threading.Lock()
         self.position_lock = threading.Lock()
         self.mode_lock = threading.Lock()
-        self.current_waypoint_lock = threading.Lock()
+        self.state_lock = threading.Lock()
 
         self.mav_interface = None
         self.mode = None
         self.position = None
         self.home_position = None
         self.current_waypoint = None
+        self.armed = None
+        self.current_waypoint = None
+        self.number_of_waypoints = None
+        self.request_mission_list_sent = False
+        self.state = DroneHandler_pymavlink.STATE_IDLE
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -163,14 +174,16 @@ class DroneHandler_pymavlink(StoppableThread):
             m = self.mav_interface.recv_msg()
             if m:
                 if m.get_type() == 'HEARTBEAT':
-                    logger.debug('Heartbeat')
                     with self.heartbeat_lock:
                         self.heartbeat = time.time()
                     self.signal.put(time.time())
                     with self.mode_lock:
                         self.mode = mavutil.interpret_px4_mode(m.base_mode, m.custom_mode)
+                    if m.base_mode & DroneHandler_pymavlink.ARMED_FLAG > 0: # Check if the drone is armed
+                        self.armed = True
+                    else:
+                        self.armed = False
                 if m.get_type() == 'GPS_RAW_INT':
-                    logger.debug('GPS_RAW_INT')
                     msg = m.to_dict()
                     position = {
                         'lat': convert_from_1e7(msg['lat']),
@@ -191,13 +204,45 @@ class DroneHandler_pymavlink(StoppableThread):
                             logger.debug(' Home position set')
                             self.home_position = position
                 if m.get_type() == 'MISSION_CURRENT':
-                    with self.current_waypoint_lock:
-                        self.current_waypoint = msg['seq']
-                        logger.debug('Current waypoint %s', msg['seq'])
+                    self.current_waypoint = m.seq
 
+                if m.get_type() == 'MISSION_COUNT':
+                    self.number_of_waypoints = m.count
+
+                # Update completion state - only relevant when we have got new information
+                self.completion_statemachine()
             # Avoid busy loop
             time.sleep(0.001)
 
+    def completion_statemachine(self):
+        with self.state_lock:
+            if self.state is DroneHandler_pymavlink.STATE_IDLE:
+                if self.armed is True:
+                    self.state = DroneHandler_pymavlink.STATE_TAKEOFF
+                    logger.info('State: Takeoff')
+                    self.request_mission_list() # Request number of waypoints. Gives a timeout because we never request the waypoints
+            elif self.state is DroneHandler_pymavlink.STATE_TAKEOFF:
+                if self.current_waypoint > 0:
+                    self.state = DroneHandler_pymavlink.STATE_ENROUTE
+                    logger.info('State: Enroute')
+            elif self.state is DroneHandler_pymavlink.STATE_ENROUTE:
+                if self.current_waypoint == self.number_of_waypoints-1:
+                    self.state = DroneHandler_pymavlink.STATE_LANDING
+                    logger.info('State: Landing')
+            elif self.state is DroneHandler_pymavlink.STATE_LANDING:
+                if self.armed is False:
+                    self.state = DroneHandler_pymavlink.STATE_LANDED
+                    logger.info('State: Landed')
+            elif self.state is DroneHandler_pymavlink.STATE_LANDED:
+                pass
+
+    def request_mission_list(self):
+        self.mav_interface.mav.mission_request_list_send(
+            1,  # target system
+            0,  # target component
+            0)  # Mission type (0: Mission)
+
+    # Api functions #
     def get_heartbeat(self):
         with self.heartbeat_lock:
             return self.heartbeat
@@ -234,6 +279,10 @@ class DroneHandler_pymavlink(StoppableThread):
         logger.info('Resume mission')
         self.mav_interface.set_mode('MISSION')
 
+    def get_state(self):
+        with self.state_lock:
+            return self.state
+
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -260,10 +309,11 @@ def main_pymavlink():
     while do_exit == False:
         try:
             time.sleep(1)
-            print 'Mode', drone_handler.get_mode()
-            print 'Position', drone_handler.get_position()
-            print 'Home position', drone_handler.get_home_position()
-            drone_handler.resume_mission()
+            #print 'Mode', drone_handler.get_mode()
+            #print 'Position', drone_handler.get_position()
+            #print 'Home position', drone_handler.get_home_position()
+            #drone_handler.resume_mission()
+            #print drone_handler.get_state()
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
             do_exit = True
