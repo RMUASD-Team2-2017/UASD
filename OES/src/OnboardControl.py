@@ -1,7 +1,7 @@
 import threading
 import time
 import logging
-from DroneHandler import DroneHandler
+from DroneHandler import DroneHandler, DroneHandler_pymavlink
 from GpsMonitor import GpsMonitor
 from ConnectionMonitor import ConnectionMonitor
 
@@ -37,6 +37,7 @@ class OnboardControl(StoppableThread):
         self.signal_drone_heartbeat_lock = threading.Lock()
         self.signal_gsm_lock = threading.Lock()
         self.signal_connection_state_lock = threading.Lock()
+        self.ready_lock = threading.Lock()
         self.gps_state = None
         self.gps_source = None
         self.drone_heartbeat = time.time()
@@ -46,6 +47,7 @@ class OnboardControl(StoppableThread):
         self.command_terminate = False
         self.command_land_here = False
         self.command_return_to_launch = False
+        self.ready # Ready state to transmit over gsm
 
         self.signal_queue = drone_handler_signal_queue
 
@@ -91,6 +93,10 @@ class OnboardControl(StoppableThread):
         with self.signal_connection_state_lock:
             self.connection_state = state
 
+    def get_readiness(self):
+        with self.ready_lock:
+            return self.ready
+
     def run(self):
         logger.info('OnboardControl started')
         while self.stop_event.is_set() is False:
@@ -113,11 +119,25 @@ class OnboardControl(StoppableThread):
 
             # We should never override manual mode
             mode = self.drone_handler.get_mode()
-            if mode == DroneHandler.MANUAL_MODE or mode == None:
+            if mode == DroneHandler.MANUAL_MODE or mode == None or state == DroneHandler:
                 logger.debug("NO ONBOARD CONTROL: Manual mode or no mode yet")
                 # Sleep to obtain desired rate
                 time.sleep(1.0 / self.rate)
                 # Skip the rest of the loop and start over
+                continue
+
+            # We should not override while on ground or when we have completed the mission
+            # We should also check if we are in an acceptable state to start a mission
+            state = self.drone_handler.get_state()
+            if state == DroneHandler_pymavlink.STATE_IDLE or state == DroneHandler_pymavlink.STATE_LANDED:
+
+                terminate = self.check_states(self.action_list_terminate)
+                land_here = self.check_states(self.action_list_land_here)
+                return_to_launch = self.check_states(self.action_list_return_to_launch)
+                wait_here = self.check_states(self.action_list_wait_here)
+                self.ready = terminate and land_here and return_to_launch and wait_here # This should be captured and sent by the gsm thread on request
+
+                time.sleep(1.0 / self.rate)
                 continue
 
             # Monitor heartbeat from dronekit

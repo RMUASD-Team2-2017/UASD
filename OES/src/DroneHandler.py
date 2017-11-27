@@ -23,7 +23,6 @@ class StoppableThread(threading.Thread):
 
 
 class DroneHandler():
-
     STATE_OK = 'HEARTBEAT_OK'
     STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
     MANUAL_MODE = 'MANUAL'
@@ -134,7 +133,11 @@ def convert_from_1ex(number,exponent):
 
 
 class DroneHandler_pymavlink(StoppableThread):
+    STATE_OK = 'HEARTBEAT_OK'
+    STATE_TIMEOUT = 'HEARTBEAT_TIMEOUT'
+    MANUAL_MODE = 'MANUAL'
     GPS_FIX_TYPE_2D_FIX = 2
+    GPS_FIX_TYPE_3D_FIX = 3
     ARMED_FLAG = 0b10000000
     STATE_IDLE = 0
     STATE_TAKEOFF = 1
