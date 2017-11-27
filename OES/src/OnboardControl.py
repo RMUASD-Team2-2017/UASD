@@ -101,9 +101,9 @@ class OnboardControl(StoppableThread):
         logger.info('OnboardControl started')
         while self.stop_event.is_set() is False:
 
-            # Update heartbeat
-            while not self.signal_queue.empty():
-                self.drone_heartbeat = self.signal_queue.get()
+            # Update heartbeat - DEPRECATED, checked by connection_monitor
+            #while not self.signal_queue.empty():
+            #    self.drone_heartbeat = self.signal_queue.get()
 
             while not self.gsm_command_queue.empty():
                 msg = self.gsm_command_queue.get()
@@ -136,11 +136,11 @@ class OnboardControl(StoppableThread):
                 return_to_launch = self.check_states(self.action_list_return_to_launch)
                 wait_here = self.check_states(self.action_list_wait_here)
                 self.ready = terminate and land_here and return_to_launch and wait_here # This should be captured and sent by the gsm thread on request
-
+                logger.debug("NO ONBOARD CONTROL: Idle or Landed state")
                 time.sleep(1.0 / self.rate)
                 continue
 
-            # Monitor heartbeat from dronekit
+            # Monitor heartbeat from dronekit - DEPRECATED. Handled by connection monitor
             # Lock is not required, just kept for remembrance if we should change something
             # This should probably be moved to connection monitor
             #with self.signal_drone_heartbeat_lock:
@@ -199,9 +199,10 @@ class OnboardControl(StoppableThread):
 
     def check_states(self,action_list):
         ret = (self.check_state(self.gps_state,action_list) or \
-               self.check_state(self.drone_connection_state, action_list) or \
-               self.check_state(self.gsm_connection_state, action_list) or \
                self.check_state(self.connection_state, action_list))
+        # DEPRECATED. Handled by connection_monitor
+        #self.check_state(self.drone_connection_state, action_list) or \
+        #self.check_state(self.gsm_connection_state, action_list) or \
         return ret
 
     def disable_wait_here(self):
