@@ -32,7 +32,7 @@ class io:
         self.on(self.pwm_cut_low_pin)
         self.off(self.pwm_cut_high_pin)
 
-    def human_interaction_control(self,pin0,pin1,pin2,pin3):
+    def human_interaction_control(self,pin3,pin2,pin1,pin0):
         if pin0:
             self.on(self.human_interaction_pin0)
         else:
@@ -81,7 +81,7 @@ class io:
         self.human_interaction_control(True,False,False,True)
 
     def read_hi_pins(self):
-        return self.read_pin(self.human_interaction_pin0), self.read_pin(self.human_interaction_pin1), self.read_pin(self.human_interaction_pin2), self.read_pin(self.human_interaction_pin3)
+        return self.read_pin(self.human_interaction_pin3), self.read_pin(self.human_interaction_pin2), self.read_pin(self.human_interaction_pin1), self.read_pin(self.human_interaction_pin0)
 
     def read_pwm_pins(self):
         return self.read_pin(self.pwm_cut_low_pin), self.read_pin(self.pwm_cut_high_pin)
@@ -92,54 +92,55 @@ class io:
 
 def main():
     gpio = io()
+    while(1):
+        gpio.enable_pwm()
+        print gpio.read_pwm_pins()
+        time.sleep(4)
 
-    gpio.enable_pwm()
-    print gpio.read_pwm_pins()
-    time.sleep(1)
+        gpio.disable_pwm()
+        print gpio.read_pwm_pins()
+        time.sleep(4)
 
-    gpio.disable_pwm()
-    print gpio.read_pwm_pins()
-    time.sleep(1)
+        gpio.hi_off()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_off()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_flash_rotation()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_flash_rotation()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_indicators()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_indicators()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_flash_rotation_indicators()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_flash_rotation_indicators()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_siren()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_siren()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_flash_rotation_siren()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_flash_rotation_siren()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_flash_rotation_indicators_siren()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_flash_rotation_indicators_siren()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_safe()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_safe()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_landing()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
-    gpio.hi_landing()
-    print gpio.read_hi_pins()
-    time.sleep(1)
-
-    gpio.hi_landing_siren()
-    print gpio.read_hi_pins()
-    time.sleep(1)
+        gpio.hi_landing_siren()
+        print gpio.read_hi_pins()
+        time.sleep(4)
 
 if __name__ == "__main__":
     main()
+
