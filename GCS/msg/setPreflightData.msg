@@ -1,4 +1,7 @@
 waypoint cur_position
 waypoint target_position
-waypoint[] path
+path path_waypoints
 std_msgs/String weather
+float32 temperature
+float32 wind
+float32 humidity

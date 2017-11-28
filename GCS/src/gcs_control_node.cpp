@@ -11,6 +11,7 @@
 #include "gcs/openDock.h"
 #include "gcs/preFlight.h"
 #include "gcs/communicationStatus.h"
+#include "gcs/setPreflightData.h"
 
 
 #include "sensor_msgs/NavSatFix.h"
@@ -79,6 +80,7 @@ class GCS_CONTROL_CLASS
 		ros::Publisher uav_state_publisher;
 		ros::Publisher mission_completed_publisher;
 		ros::Publisher communicationStatusPublisher;
+		ros::Publisher uav_preflight_set_publisher;
 
 		/* Methods */
 
@@ -146,7 +148,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
 	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
-
+	uav_preflight_set_publisher = nh.advertise<gcs::setPreflightData>("/web_interface/listen/set_preflight_data",1);
 	std_msgs::String msg;
 	msg.data = "idle";
 	uav_state_publisher.publish(msg);
@@ -230,6 +232,12 @@ void GCS_CONTROL_CLASS::run()
 					// 			pre_flight_msg.response.latitude, pre_flight_msg.response.longitude);
 					if ( pfcheck && pre_flight_msg.response.result == true)
 					{
+						gcs::setPreflightData msg;
+						msg.path_waypoints = planned_path;
+						msg.temperature = outside_temperature;
+						msg.humidity = outside_humidity;
+						msg.wind = wind_speed;
+						uav_preflight_set_publisher.publish(msg);
 						state = WAIT_FOR_READY;
 						ROS_INFO("[gcs_control] WAIT_FOR_READY");
 					}

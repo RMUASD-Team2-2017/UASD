@@ -17,7 +17,8 @@
 #include "mavros_msgs/WaypointList.h"
 #include "mavros_msgs/BatteryStatus.h"
 #include "mavros_msgs/ParamGet.h"
-
+#include "mavros_msgs/WaypointPull.h"
+#include "mavros_msgs/CommandLong.h"
 
 #include "mavlink_defines.h"	// For mavlink defines not accessible in other files
 
@@ -48,8 +49,10 @@
 #define DEBUG true
 #define HEARTBEAT_MAX_TIMEOUT 5 //Seconds
 
+// Waypoint definitions - see also mavlink_defines.h in include
 #define HOLD_TIME 				0.0
 #define ACCEPTANCE_RADIUS		1.0
+#define SPEED 15.0
 
 #define ROS_TAKEOFF 0
 #define ROS_WAYPOINT 1
@@ -122,6 +125,8 @@ private:
 	bool missionReceived = false;
 	bool missionCleared = false;
 	bool NAV_DLL_ACT_set = false;
+	bool speed_set = false;
+	bool speed2_set = false;
 
 	int setup_trials = 0;
 	int missionmode_trials = 0;
@@ -165,6 +170,8 @@ private:
 	ros::ServiceClient setParameterServiceClient;
 	ros::ServiceClient setModeServiceClient;
 	ros::ServiceClient getParameterServiceClient;
+	ros::ServiceClient pullMissionServiceClient;
+	ros::ServiceClient commandLongServiceClient;
 
 	// Published topics
 	ros::Publisher communicationStatusPublisher;
@@ -175,7 +182,7 @@ private:
 
 	// Subscribed topics
 	ros::Subscriber stateSubscriber;
-  void stateCallback(const mavros_msgs::State &msg);
+  	void stateCallback(const mavros_msgs::State &msg);
 	ros::Subscriber globalPositionSubscriber;
 	void globalPositionCallback(const sensor_msgs::NavSatFix &msg);
 	ros::Subscriber missionStatusSubscriber;
@@ -213,6 +220,8 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	setParameterServiceClient = nh.serviceClient<mavros_msgs::ParamSet>("/mavros/param/set");
 	setModeServiceClient = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 	getParameterServiceClient = nh.serviceClient<mavros_msgs::ParamGet>("/mavros/param/get");
+	pullMissionServiceClient = nh.serviceClient<mavros_msgs::WaypointPull>("/mavros/mission/pull");
+	commandLongServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros/cmd/command");
 
 	// Publishers
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
@@ -614,7 +623,7 @@ bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req,
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.RTL";
 
-		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		if(!setModeServiceClient.call(setModeMsg) || !setModeMsg.response.success)
 		{
 			ROS_ERROR("[drone_comm] Error in setting mode AUTO.RTL");
 			ret = false;
@@ -635,7 +644,7 @@ bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Re
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.LOITER";
 
-		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		if(!setModeServiceClient.call(setModeMsg) || !setModeMsg.response.success)
 		{
 			ROS_ERROR("[drone_comm] Error in setting mode AUTO.LOITER");
 			ret = false;
@@ -656,7 +665,7 @@ bool DRONE_COMM_CLASS::continueMissionCallback(gcs::continueMission::Request &re
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.MISSION";
 
-		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		if(!setModeServiceClient.call(setModeMsg) || !setModeMsg.response.success)
 		{
 			ROS_ERROR("[drone_comm] Error in setting mode AUTO.MISSION");
 			ret = false;
@@ -682,7 +691,7 @@ bool DRONE_COMM_CLASS::setup()
 	{
 		ROS_INFO("[drone_comm] Mission clear entered");
 		mavros_msgs::WaypointClear clearMsg;
-		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
+		if(!clearMissionServiceClient.call(clearMsg) || !clearMsg.response.success)
 		{
 			ROS_ERROR("[drone_comm] Error in clearing mission");
 		}
@@ -697,13 +706,15 @@ bool DRONE_COMM_CLASS::setup()
 		ROS_INFO("[drone_comm] NAV_DLL_ACT set entered");
 		mavros_msgs::ParamGet paramGetMsg;
 		paramGetMsg.request.param_id = "NAV_DLL_ACT";
-		if(getParameterServiceClient.call(paramGetMsg) && paramGetMsg.response.value.integer == 0)
+		if(getParameterServiceClient.call(paramGetMsg) && paramGetMsg.response.value.integer == 0) {
 			NAV_DLL_ACT_set = true;
+			ROS_INFO("NAV_DLL_ACT already set");
+		}
 		else
 		{
 			mavros_msgs::ParamSet paramMsg;
 			paramMsg.request.param_id = "NAV_DLL_ACT";
-			if(!setParameterServiceClient.call(paramMsg) && !paramMsg.response.success)
+			if(!setParameterServiceClient.call(paramMsg) || !paramMsg.response.success)
 			{
 				ROS_ERROR("[drone_comm] Error in setting NAV_DLL_ACT");
 			}
@@ -714,7 +725,57 @@ bool DRONE_COMM_CLASS::setup()
 			}
 		}
 	}
-	return (missionCleared && NAV_DLL_ACT_set && curDroneStatus.state.connected);
+
+	if(!speed_set)
+	{
+		//MPC_XY_VEL_MAX: Max speed in all (auto) modes
+		//MPC_XY_CRUISE: Specific speed in mission mode, capped to MPC_XY_VEL_MAX
+		ros::Duration(1).sleep();
+		ROS_INFO("Max speed set entered");
+		mavros_msgs::ParamSet speedMsg;
+		speedMsg.request.param_id = "MPC_XY_VEL_MAX";
+		speedMsg.request.value.real = SPEED;
+		//speedMsg.request.command = DO_CHANGE_SPEED;
+		//speedMsg.request.confirmation = 0;
+		//speedMsg.request.param1 = GROUNDSPEED; // Air speed or ground speed
+		//speedMsg.request.param2 = SPEED; // Speed m/s
+		//speedMsg.request.param3 = -1; // Throttle percentage. -1: Don't change
+		//speedMsg.request.param4 = ABSOLUTE; // Absolute or relative
+		//Param 5-7 empty
+		if(!setParameterServiceClient.call(speedMsg) || !speedMsg.response.success)
+		{
+			ROS_ERROR("Error in setting max speed");
+		}
+		else
+		{
+			speed_set = true;
+			ROS_INFO("Max speed set");
+		}
+
+	}
+
+	if(!speed2_set)
+	{
+		//MPC_XY_VEL_MAX: Max speed in all (auto) modes
+		//MPC_XY_CRUISE: Specific speed in mission mode, capped to MPC_XY_VEL_MAX
+		ros::Duration(1).sleep();
+		ROS_INFO("Cruise speed set entered");
+		mavros_msgs::ParamSet speedMsg;
+		speedMsg.request.param_id = "MPC_XY_CRUISE";
+		speedMsg.request.value.real = SPEED;
+
+		if(!setParameterServiceClient.call(speedMsg) || !speedMsg.response.success)
+		{
+			ROS_ERROR("Error in setting cruise speed");
+		}
+		else
+		{
+			speed2_set = true;
+			ROS_INFO("Cruise speed set");
+		}
+
+	}
+	return (missionCleared && NAV_DLL_ACT_set && speed_set && speed2_set && curDroneStatus.state.connected);
 }
 
 bool DRONE_COMM_CLASS::arm()
@@ -755,7 +816,7 @@ bool DRONE_COMM_CLASS::enableMissionMode()
 	}
 	else
 	{
-		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
+		if(!setModeServiceClient.call(setModeMsg) || !setModeMsg.response.success)
 		{
 			ROS_ERROR("[drone_comm] Error in setting mode AUTO.MISSION");
 			ret = false;
@@ -924,19 +985,34 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	}
 
 	int upload_trials = 0;
+	bool pull_ok = false;
 	while( !missionReceived && upload_trials < 10 )
 	{
 		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 		{
-	    	ROS_INFO("[drone_comm] Uploded waypoints: %i",missionMsg.response.wp_transfered);
-				missionReceived = true;
-				res.result = SUCCESS;
+	    	ROS_INFO("[drone_comm] Uploaded waypoints: %i",missionMsg.response.wp_transfered);
+
+			int pull_trials = 0;
+			pull_ok = false;
+			while(!pull_ok && pull_trials < 10)
+			{
+				ROS_INFO("Checking mission attempt: %i",pull_trials+1);
+				mavros_msgs::WaypointPull pullMissionMsg;
+				if(pullMissionServiceClient.call(pullMissionMsg) && pullMissionMsg.response.success && pullMissionMsg.response.wp_received == numberOfWaypoints)
+				{
+					missionReceived = true;
+					pull_ok = true;
+					res.result = SUCCESS;
+					ROS_INFO("Mission check passed");
+				}
+				ros::Duration(1.0).sleep();
+			}
 		}
 		else
 			upload_trials += 1;
 			ros::Duration(1.0).sleep();
 	}
-	if( !missionReceived)
+	if( !missionReceived or !pull_ok)
 	{
 	  ROS_ERROR("[drone_comm] Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
 		res.result = ERROR_UPLOAD_MISSION;

@@ -140,6 +140,8 @@ class GpsModule(StoppableThread):
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
     gps = GpsModule(sys.argv[1],sys.argv[2])
     gps.start()
     do_exit = False
