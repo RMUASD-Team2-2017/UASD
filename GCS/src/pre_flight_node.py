@@ -45,6 +45,7 @@ def handle_pre_flight_srv(req):
 	check = check & (battery_voltage > battery_threshold)
 
 	for i in range(0, num_battery_cells - 1):
+		rospy.loginfo(i)
 		rospy.loginfo(cell_voltage[i])
 		check = check & (cell_voltage[i] > 3.7)
 
@@ -55,7 +56,7 @@ def pre_flight():
 	battery_voltage = 0.0
 	global cell_voltage
 	cell_voltage = (0.0, 0.0, 0.0, 0.0);
-	rospy.loginfo("Cell voltages: %f %f %f %f", cell_voltage[0], cell_voltage[1], cell_voltage[2], cell_voltage[3])
+	rospy.loginfo("[pre_flight] Cell voltages: %f %f %f %f", cell_voltage[0], cell_voltage[1], cell_voltage[2], cell_voltage[3])
 
 	rospy.init_node('pre_flight')
 	rospy.Subscriber("drone_communication/batteryStatus", BatteryStatus, batteryStatusSubscriberCallback)
@@ -65,7 +66,10 @@ def pre_flight():
 	# weather.setLocation(55.471089000000006, 10.330159499999999, 1)
 	# rospy.loginfo(weather.getPrecipitation())
 	pfs = rospy.Service('pre_flight_node/preFlight', preFlight, handle_pre_flight_srv)
+	rospy.loginfo("[pre_flight] Node started.")
 	rospy.spin()
+
+	# TODO Check, through GSM, that OES is working and reports a positive status.
 
 if __name__ == '__main__':
     try:

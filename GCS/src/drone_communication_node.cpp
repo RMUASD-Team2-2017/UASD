@@ -227,6 +227,8 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	batteryStatusSubscriber = nh.subscribe("/mavros/battery",1,&DRONE_COMM_CLASS::batteryStatusSubscriberCallback,this);
 
 	heartbeatTimestamp = ros::Time::now().toSec();
+
+	ROS_INFO("[drone_comm] Node started.");
 }
 
 DRONE_COMM_CLASS::~DRONE_COMM_CLASS()
@@ -238,7 +240,7 @@ void DRONE_COMM_CLASS::stateCallback(const mavros_msgs::State &msg)
 	curDroneStatus.state = msg;
 	statePublisher.publish(msg);
 	if(DEBUG){
-		ROS_INFO("Heartbeat");
+		ROS_INFO("[drone_comm] Heartbeat");
 		if(controlStatus == IDLE)
 			std::cout << " State: " << "IDLE" << std::endl;
 		else
@@ -250,7 +252,7 @@ void DRONE_COMM_CLASS::globalPositionCallback(const sensor_msgs::NavSatFix &msg)
 {
 	curDroneStatus.gpsPosition = msg;
 	dronePositionPublisher.publish(msg);
-	//if(DEBUG) ROS_INFO("Global position");
+	//if(DEBUG) ROS_INFO("[drone_comm] Global position");
 }
 
 void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::WaypointList &msg)
@@ -263,7 +265,7 @@ void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::Waypoi
 		if( msg.waypoints[i].is_current == true)
 		{
 			current_waypoint = i;
-			ROS_INFO("Reached waypoint %i", current_waypoint);
+			ROS_INFO("[drone_comm] Reached waypoint %i", current_waypoint);
 			break;
 		}
 	}
@@ -272,7 +274,7 @@ void DRONE_COMM_CLASS::missionStatusSubscriberCallback(const mavros_msgs::Waypoi
 void DRONE_COMM_CLASS::batteryStatusSubscriberCallback(const mavros_msgs::BatteryStatus &msg)
 {
 	batteryStatusPublisher.publish(msg);
-	// ROS_INFO("Battery status received, voltage is %f", msg.voltage);
+	// ROS_INFO("[drone_comm] Battery status received, voltage is %f", msg.voltage);
 }
 
 void DRONE_COMM_CLASS::checkHeartbeat()
@@ -283,7 +285,7 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 		gcs::communicationStatus statusMsg;
 		statusMsg.connected = false;
 		communicationStatusPublisher.publish(statusMsg);
-		//ROS_ERROR("Link lost %f %f", now, heartbeatTimestamp);
+		//ROS_ERROR("[drone_comm] Link lost %f %f", now, heartbeatTimestamp);
 	}
 	else
 	{
@@ -295,14 +297,14 @@ void DRONE_COMM_CLASS::checkHeartbeat()
 
 bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
 {
-	if(DEBUG) ROS_INFO("Uploading mission");
+	if(DEBUG) ROS_INFO("[drone_comm] Uploading mission");
 	res.result = SUCCESS;
 	mavros_msgs::WaypointClear clearMsg;
 	while(true)
 	{
 		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
 		{
-			ROS_ERROR("Error in clearing mission");
+			ROS_ERROR("[drone_comm] Error in clearing mission");
 			res.result = ERROR_CLEARING_MISSION;
 			return false;
 		}
@@ -315,7 +317,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	{
 		if(!setParameterServiceClient.call(paramMsg) && !paramMsg.response.success)
 		{
-			ROS_ERROR("Error in setting NAV_DLL_ACT");
+			ROS_ERROR("[drone_comm] Error in setting NAV_DLL_ACT");
 			res.result = ERROR_PARAM_SET;
 			return false;
 		}
@@ -328,7 +330,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	{
 		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
 		{
-			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			ROS_ERROR("[drone_comm] Error in setting mode AUTO.MISSION");
 			res.result = ERROR_SET_MODE;
 			return false;
 		}
@@ -337,11 +339,11 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 	}
 
 	int numberOfWaypoints = req.waypoints.path.size();
-	if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
+	if(DEBUG) ROS_INFO("[drone_comm] Waypoints to upload: %i",numberOfWaypoints);
 	mavros_msgs::WaypointPush missionMsg;
 	for(int i=0; i<numberOfWaypoints; i++)
 	{
-		ROS_INFO("Wp: %i lat: %f lon: %f alt: %f type: %i", i, req.waypoints.path[i].lat , req.waypoints.path[i].lon, req.waypoints.path[i].alt, req.waypoints.path[i].type);
+		ROS_INFO("[drone_comm] Wp: %i lat: %f lon: %f alt: %f type: %i", i, req.waypoints.path[i].lat , req.waypoints.path[i].lon, req.waypoints.path[i].alt, req.waypoints.path[i].type);
 		mavros_msgs::Waypoint wp;
 		wp.frame = FRAME_GLOBAL_REL_ALT;
 		switch (req.waypoints.path[i].type) {
@@ -367,7 +369,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 				// param4 yaw. NaN for unchanged
 				break;
 			default:
-				ROS_ERROR("WRONG COMMAND TYPE");
+				ROS_ERROR("[drone_comm] WRONG COMMAND TYPE");
 				break;
 		}
 		wp.is_current = false;
@@ -433,11 +435,11 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 
 	if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 	{
-    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
+    	ROS_INFO("[drone_comm] Uploded waypoints: %i",missionMsg.response.wp_transfered);
 	}
 	else
 	{
-    	ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+    	ROS_ERROR("[drone_comm] Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
 		res.result = ERROR_UPLOAD_MISSION;
 	}
 	return true;
@@ -445,24 +447,24 @@ bool DRONE_COMM_CLASS::uploadMissionCallback(gcs::uploadMission::Request &req, g
 
 bool DRONE_COMM_CLASS::clearMissionCallback(gcs::clearMission::Request &req, gcs::clearMission::Response &res)
 {
-	if(DEBUG) ROS_INFO("Clearing mission");
+	if(DEBUG) ROS_INFO("[drone_comm] Clearing mission");
 	mavros_msgs::WaypointClear msg;
 	if(clearMissionServiceClient.call(msg))
 	{
 		if(msg.response.success == true)
 		{
 			res.result = SUCCESS;
-			ROS_INFO("Waypoints cleared. Succes: %i Result %i", msg.response.success);
+			ROS_INFO("[drone_comm] Waypoints cleared. Succes: %i Result %i", msg.response.success);
 		}
 		else
 		{
 			res.result = ERROR;
-			ROS_ERROR("Failed to clear mission. Succes: %i Result %i", msg.response.success);
+			ROS_ERROR("[drone_comm] Failed to clear mission. Succes: %i Result %i", msg.response.success);
 		}
 	}
 	else
 	{
-		ROS_ERROR("Failed to clear mission. Succes: %i Result %i", msg.response.success);
+		ROS_ERROR("[drone_comm] Failed to clear mission. Succes: %i Result %i", msg.response.success);
 		res.result = ERROR;
 	}
 	return true;
@@ -470,25 +472,25 @@ bool DRONE_COMM_CLASS::clearMissionCallback(gcs::clearMission::Request &req, gcs
 
 bool DRONE_COMM_CLASS::armCallback(gcs::arm::Request &req, gcs::arm::Response &res)
 {
-	if(DEBUG) ROS_INFO("Arming");
+	if(DEBUG) ROS_INFO("[drone_comm] Arming");
 	mavros_msgs::CommandBool msg;
 	msg.request.value = true;
 	if(armServiceClient.call(msg))
 	{
 		if(msg.response.success == true)
 		{
-			ROS_INFO("Armed. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_INFO("[drone_comm] Armed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
 		}
 		else
 		{
-			ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = ERROR;
 		}
 	}
 	else
 	{
-		ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
 		res.result = ERROR;
 	}
 	return true;
@@ -496,27 +498,27 @@ bool DRONE_COMM_CLASS::armCallback(gcs::arm::Request &req, gcs::arm::Response &r
 
 bool DRONE_COMM_CLASS::disarmCallback(gcs::disarm::Request &req, gcs::disarm::Response &res)
 {
-	if(DEBUG) ROS_INFO("Disarming");
+	if(DEBUG) ROS_INFO("[drone_comm] Disarming");
 	mavros_msgs::CommandBool msg;
 	msg.request.value = false;
 	if(armServiceClient.call(msg))
 	{
 		if(msg.response.success == true)
 		{
-			ROS_INFO("Disarmed. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_INFO("[drone_comm] Disarmed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
 			controlStatus = INTERVENTION_TERMINATE;
 		}
 		else
 		{
-			ROS_ERROR("Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = ERROR;
 
 		}
 	}
 	else
 	{
-		ROS_ERROR("Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to disarm. Succes: %i Result %i", msg.response.success, msg.response.result);
 		res.result = ERROR;
 	}
 	return true;
@@ -533,19 +535,19 @@ bool DRONE_COMM_CLASS::takeoffCallback(gcs::takeoff::Request &req, gcs::takeoff:
 	{
 		if(msg.response.success == true)
 		{
-			if(DEBUG) ROS_INFO("Take off. Succes: %i Result %i", msg.response.success, msg.response.result);
+			if(DEBUG) ROS_INFO("[drone_comm] Take off. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
 		}
 		else
 		{
 			res.result = ERROR;
-			ROS_ERROR("Failed to take off. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to take off. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
 		res.result = ERROR;
-		ROS_ERROR("Failed to takeoff. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to takeoff. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 }
 
@@ -560,20 +562,20 @@ bool DRONE_COMM_CLASS::landCallback(gcs::land::Request &req, gcs::land::Response
 	{
 		if(msg.response.success == true)
 		{
-			if(DEBUG) ROS_INFO("Landed. Succes: %i Result %i", msg.response.success, msg.response.result);
+			if(DEBUG) ROS_INFO("[drone_comm] Landed. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
 			controlStatus = INTERVENTION_LAND_HERE;
 		}
 		else
 		{
 			res.result = ERROR;
-			ROS_ERROR("Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
 		res.result = ERROR;
-		ROS_ERROR("Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to land. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 }
 
@@ -588,38 +590,38 @@ bool DRONE_COMM_CLASS::startMissionCallback(gcs::startMission::Request &req, gcs
 	{
 		if(msg.response.success == true)
 		{
-			if(DEBUG) ROS_INFO("Mission started. Succes: %i Result %i", msg.response.success, msg.response.result);
+			if(DEBUG) ROS_INFO("[drone_comm] Mission started. Succes: %i Result %i", msg.response.success, msg.response.result);
 			res.result = SUCCESS;
 		}
 		else
 		{
 			res.result = ERROR;
-			ROS_ERROR("Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 	}
 	else
 	{
 		res.result = ERROR;
-		ROS_ERROR("Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to start mission. Succes: %i Result %i", msg.response.success, msg.response.result);
 	}
 	return true;
 }
 
 bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req, gcs::returnToLaunch::Response &res)
 {
-	ROS_INFO("Set mode AUTO.RTL");
+	ROS_INFO("[drone_comm] Set mode AUTO.RTL");
 	bool ret = false;
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.RTL";
 
 		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
 		{
-			ROS_ERROR("Error in setting mode AUTO.RTL");
+			ROS_ERROR("[drone_comm] Error in setting mode AUTO.RTL");
 			ret = false;
 		}
 		else
 		{
-			ROS_INFO("Setting AUTO.RTL mode");
+			ROS_INFO("[drone_comm] Setting AUTO.RTL mode");
 			ret = true;
 			controlStatus = INTERVENTION_RTL;
 		}
@@ -628,20 +630,20 @@ bool DRONE_COMM_CLASS::returnToLaunchCallback(gcs::returnToLaunch::Request &req,
 
 bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Response &res)
 {
-	ROS_INFO("Setmode AUTO.LOITER");
+	ROS_INFO("[drone_comm] Setmode AUTO.LOITER");
 	bool ret = false;
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.LOITER";
 
 		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
 		{
-			ROS_ERROR("Error in setting mode AUTO.LOITER");
+			ROS_ERROR("[drone_comm] Error in setting mode AUTO.LOITER");
 			ret = false;
 			controlStatus = INTERVENTION_LOITER;
 		}
 		else
 		{
-			ROS_INFO("Setting AUTO.LOITER mode");
+			ROS_INFO("[drone_comm] Setting AUTO.LOITER mode");
 			ret = true;
 		}
 	return ret;
@@ -649,20 +651,20 @@ bool DRONE_COMM_CLASS::loiterCallback(gcs::loiter::Request &req, gcs::loiter::Re
 
 bool DRONE_COMM_CLASS::continueMissionCallback(gcs::continueMission::Request &req, gcs::continueMission::Response &res)
 {
-	ROS_INFO("Setmode AUTO.MISSION");
+	ROS_INFO("[drone_comm] Setmode AUTO.MISSION");
 	bool ret = false;
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.MISSION";
 
 		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
 		{
-			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			ROS_ERROR("[drone_comm] Error in setting mode AUTO.MISSION");
 			ret = false;
 			controlStatus = ENROUTE;
 		}
 		else
 		{
-			ROS_INFO("Setting AUTO.MISSION mode");
+			ROS_INFO("[drone_comm] Setting AUTO.MISSION mode");
 			ret = true;
 		}
 	return ret;
@@ -672,27 +674,27 @@ bool DRONE_COMM_CLASS::setup()
 {
 	if(!curDroneStatus.state.connected)
 	{
-		ROS_ERROR("Drone not connected");
+		ROS_ERROR("[drone_comm] Drone not connected");
 		return false;
 	}
 
 	if(!missionCleared)
 	{
-		ROS_INFO("Mission clear entered");
+		ROS_INFO("[drone_comm] Mission clear entered");
 		mavros_msgs::WaypointClear clearMsg;
 		if(!clearMissionServiceClient.call(clearMsg) && !clearMsg.response.success)
 		{
-			ROS_ERROR("Error in clearing mission");
+			ROS_ERROR("[drone_comm] Error in clearing mission");
 		}
 		else
 		{
 			missionCleared = true;
-			ROS_INFO("Mision cleared");
+			ROS_INFO("[drone_comm] Mision cleared");
 		}
 	}
 	if(!NAV_DLL_ACT_set)
 	{
-		ROS_INFO("NAV_DLL_ACT set entered");
+		ROS_INFO("[drone_comm] NAV_DLL_ACT set entered");
 		mavros_msgs::ParamGet paramGetMsg;
 		paramGetMsg.request.param_id = "NAV_DLL_ACT";
 		if(getParameterServiceClient.call(paramGetMsg) && paramGetMsg.response.value.integer == 0)
@@ -703,12 +705,12 @@ bool DRONE_COMM_CLASS::setup()
 			paramMsg.request.param_id = "NAV_DLL_ACT";
 			if(!setParameterServiceClient.call(paramMsg) && !paramMsg.response.success)
 			{
-				ROS_ERROR("Error in setting NAV_DLL_ACT");
+				ROS_ERROR("[drone_comm] Error in setting NAV_DLL_ACT");
 			}
 			else
 			{
 				NAV_DLL_ACT_set = true;
-				ROS_INFO("NAV_DLL_ACT set");
+				ROS_INFO("[drone_comm] NAV_DLL_ACT set");
 			}
 		}
 	}
@@ -718,24 +720,24 @@ bool DRONE_COMM_CLASS::setup()
 bool DRONE_COMM_CLASS::arm()
 {
 	bool ret = true;
-	if(DEBUG) ROS_INFO("Arming");
+	if(DEBUG) ROS_INFO("[drone_comm] Arming");
 	mavros_msgs::CommandBool msg;
 	msg.request.value = true;
 	if(armServiceClient.call(msg))
 	{
 		if(msg.response.success == true)
 		{
-			ROS_INFO("Armed. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_INFO("[drone_comm] Armed. Succes: %i Result %i", msg.response.success, msg.response.result);
 		}
 		else
 		{
-			ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+			ROS_ERROR("[drone_comm] Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
 			ret = false;
 		}
 	}
 	else
 	{
-		ROS_ERROR("Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
+		ROS_ERROR("[drone_comm] Failed to arm. Succes: %i Result %i", msg.response.success, msg.response.result);
 		ret = false;
 	}
 	return ret;
@@ -743,7 +745,7 @@ bool DRONE_COMM_CLASS::arm()
 
 bool DRONE_COMM_CLASS::enableMissionMode()
 {
-	ROS_INFO("Enable mission mode called");
+	ROS_INFO("[drone_comm] Enable mission mode called");
 	bool ret = false;
 	mavros_msgs::SetMode setModeMsg;
 	setModeMsg.request.custom_mode = "AUTO.MISSION";
@@ -755,12 +757,12 @@ bool DRONE_COMM_CLASS::enableMissionMode()
 	{
 		if(!setModeServiceClient.call(setModeMsg) && !setModeMsg.response.success)
 		{
-			ROS_ERROR("Error in setting mode AUTO.MISSION");
+			ROS_ERROR("[drone_comm] Error in setting mode AUTO.MISSION");
 			ret = false;
 		}
 		else
 		{
-			ROS_INFO("Setting mission mode");
+			ROS_INFO("[drone_comm] Setting mission mode");
 		}
 	}
 	return ret;
@@ -788,7 +790,7 @@ void DRONE_COMM_CLASS::control()
 
 				if(setup_trials < 10)
 				{
-					ROS_INFO("Setup attempt: %i", setup_trials);
+					ROS_INFO("[drone_comm] Setup attempt: %i", setup_trials);
 					if( setup() )
 						controlStatus = ENABLE_MISSION_MODE;
 					else
@@ -800,19 +802,19 @@ void DRONE_COMM_CLASS::control()
 				else
 				{
 						controlStatus = ERROR_STATE;
-						ROS_ERROR("Setup failed");
+						ROS_ERROR("[drone_comm] Setup failed");
 				}
 			}
 			else
 			{
-				ROS_ERROR("RC in manual mode. Switch to another mode");
+				ROS_ERROR("[drone_comm] RC in manual mode. Switch to another mode");
 			}
 
 			break;
 		case ENABLE_MISSION_MODE:
 			if( missionmode_trials < 10)
 			{
-				ROS_INFO("Missionmode attempt: %i", missionmode_trials);
+				ROS_INFO("[drone_comm] Missionmode attempt: %i", missionmode_trials);
 				if(enableMissionMode())
 					controlStatus = IDLE;
 				else
@@ -824,7 +826,7 @@ void DRONE_COMM_CLASS::control()
 			else
 			{
 				controlStatus = ERROR_STATE;
-				ROS_ERROR("Missionmode failed");
+				ROS_ERROR("[drone_comm] Missionmode failed");
 			}
 			break;
 		case IDLE:
@@ -846,7 +848,7 @@ void DRONE_COMM_CLASS::control()
 					}
 				} else {
 					controlStatus = ERROR_STATE;
-					ROS_ERROR("Arm failed");
+					ROS_ERROR("[drone_comm] Arm failed");
 				}
 			break;
 		case ENROUTE:
@@ -857,13 +859,13 @@ void DRONE_COMM_CLASS::control()
 		case INTERVENTION_RTL:
 		case INTERVENTION_LAND_HERE:
 		case INTERVENTION_TERMINATE:
-			ROS_ERROR("INTERVENTION");
+			ROS_ERROR("[drone_comm] INTERVENTION");
 			break;
 		case ERROR_STATE:
-			ROS_ERROR("ERROR STATE");
+			ROS_ERROR("[drone_comm] ERROR STATE");
 			break;
 		default:
-			ROS_ERROR("ERROR: DEFAULT STATE");
+			ROS_ERROR("[drone_comm] ERROR: DEFAULT STATE");
 	}
 }
 
@@ -872,7 +874,7 @@ bool DRONE_COMM_CLASS::stopMissionCallback(gcs::stopMission::Request &req, gcs::
 
 bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, gcs::uploadMission::Response &res)
 {
-	if(DEBUG) ROS_INFO("Uploading mission");
+	if(DEBUG) ROS_INFO("[drone_comm] Uploading mission");
 	if(controlStatus != IDLE)
 	{
 		res.result = ERROR_UPLOAD_MISSION;
@@ -880,11 +882,11 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	}
 
 	int numberOfWaypoints = req.waypoints.path.size();
-	if(DEBUG) ROS_INFO("Waypoints to upload: %i",numberOfWaypoints);
+	if(DEBUG) ROS_INFO("[drone_comm] Waypoints to upload: %i",numberOfWaypoints);
 	mavros_msgs::WaypointPush missionMsg;
 	for(int i=0; i<numberOfWaypoints; i++)
 	{
-		ROS_INFO("Wp: %i lat: %f lon: %f alt: %f type: %i", i, req.waypoints.path[i].lat , req.waypoints.path[i].lon, req.waypoints.path[i].alt, req.waypoints.path[i].type);
+		ROS_INFO("[drone_comm] Wp: %i lat: %f lon: %f alt: %f type: %i", i, req.waypoints.path[i].lat , req.waypoints.path[i].lon, req.waypoints.path[i].alt, req.waypoints.path[i].type);
 		mavros_msgs::Waypoint wp;
 		wp.frame = FRAME_GLOBAL_REL_ALT;
 		switch (req.waypoints.path[i].type) {
@@ -910,7 +912,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 				// param4 yaw. NaN for unchanged
 				break;
 			default:
-				ROS_ERROR("WRONG COMMAND TYPE");
+				ROS_ERROR("[drone_comm] WRONG COMMAND TYPE");
 				break;
 		}
 		wp.is_current = false;
@@ -926,7 +928,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	{
 		if (uploadMissionServiceClient.call(missionMsg) && missionMsg.response.success && missionMsg.response.wp_transfered == numberOfWaypoints )
 		{
-	    	ROS_INFO("Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	    	ROS_INFO("[drone_comm] Uploded waypoints: %i",missionMsg.response.wp_transfered);
 				missionReceived = true;
 				res.result = SUCCESS;
 		}
@@ -936,7 +938,7 @@ bool DRONE_COMM_CLASS::uploadMissionCallback2(gcs::uploadMission::Request &req, 
 	}
 	if( !missionReceived)
 	{
-	  ROS_ERROR("Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
+	  ROS_ERROR("[drone_comm] Mission upload failed. Uploded waypoints: %i",missionMsg.response.wp_transfered);
 		res.result = ERROR_UPLOAD_MISSION;
 	}
 	return true;

@@ -55,6 +55,7 @@ PATH_PLANNER_CLASS::PATH_PLANNER_CLASS(ros::NodeHandle n)
 	nh = n;
 	planPathService = nh.advertiseService("/path_planner/plan",&PATH_PLANNER_CLASS::callbackPlanPathService, this);
 	pathPublisher = nh.advertise<gcs::path>("/path_planner/path",1);
+	ROS_INFO("[path_planner] Node started.");
 }
 
 PATH_PLANNER_CLASS::~PATH_PLANNER_CLASS()
@@ -243,18 +244,18 @@ fence_test.set_obstacles("/home/mathias/Desktop/obstacle_test.csv");
 // 	bool result = fence.edge_legal(ptest2,ptest3);
 
 // 	//bool result = fence.point_legal(ptest);
-// 	//ROS_INFO("%i",points.size());
+// 	//ROS_INFO("[path_planner] %i",points.size());
 
-// 	ROS_INFO("main result: %i",result);
+// 	ROS_INFO("[path_planner] main result: %i",result);
 
 // 	point geodetic_p;
 // 	geodetic_p.lat = 55.0000000000;
 // 	geodetic_p.lon = 009.0000000000;
 // 	//geodetic_p.lat = 55.403756;
 // 	//geodetic_p.lon = 10.40237;
-// 	//ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
+// 	//ROS_INFO("[path_planner] %f,%f",geodetic_p.lat,geodetic_p.lon);
 // 	//fence.geodetic_to_UTM(geodetic_p);
-// 	//ROS_INFO("%f,%f",geodetic_p.lat,geodetic_p.lon);
+// 	//ROS_INFO("[path_planner] %f,%f",geodetic_p.lat,geodetic_p.lon);
 // 	//fence.test_UTM();
 // 	fence.self_test();
 	ros::Rate rate(20);

@@ -37,6 +37,7 @@ def main():
     #set_uav_current_location = rospy.Subscriber('/web_interface/listen/set_uav_current_location',waypoint,setUavCurrentLocationCallback)
     set_uav_current_location = rospy.Subscriber('/drone_communication/globalPosition',NavSatFix,setUavCurrentLocationCallback)
     rate = rospy.Rate(1)
+    rospy.loginfo("[web_interface] Node started.")
     while not rospy.is_shutdown():
         (update_count,lat,lng,alt) = interface.getDeployRequest()
         print 'Checking',update_count,lat,lng,alt

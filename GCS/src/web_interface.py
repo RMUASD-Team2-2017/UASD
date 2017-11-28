@@ -156,7 +156,7 @@ class web_interface:
             except:
                 print 'Unexpected in set_uav_current_location'
                 return -10
-            print 'setCurrentLocation result: ', r.text
+            #print 'setCurrentLocation result: ', r.text
         # Count up but limit. Input: 20 Hz. WIth % 10 -> output: 2 Hz
         self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 20
 
