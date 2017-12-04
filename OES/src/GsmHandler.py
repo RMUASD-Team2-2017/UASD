@@ -4,6 +4,8 @@ import logging
 import json
 import time
 from Queue import Queue
+from ConnectionMonitor import ConnectionMonitor
+from GpsMonitor import GpsMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,8 @@ class GsmTalker(StoppableThread):
         self.transmit_queue = transmit_queue
         self.heartbeat_rate = heartbeat_rate
         self.heartbeat_timer = None
+        self.connection_state = ConnectionMonitor.STATE_CON_TELEMETRY_LOST_GSM_LOST
+        self.gps_state = GpsMonitor.STATE_LOST
 
         parameters = pika.URLParameters(pika_connection_string)
         parameters.socket_timeout = 1000
@@ -92,7 +96,13 @@ class GsmTalker(StoppableThread):
         # Publish when messages are queued
         while self.stop_event.is_set() is False:
             while not self.transmit_queue.empty():
-                self.publish_json(self.transmit_queue.get())
+                msg = self.transmit_queue.get()
+                if msg['type'] == 'CONNECTION_STATE':
+                    self.connection_state = msg['value']
+                elif msg['type'] == 'GPS_STATE':
+                    self.gps_state = msg['value']
+                else:
+                    self.publish_json(msg)
 
         if self.heartbeat_timer.is_alive():
             self.heartbeat_timer.cancel()
@@ -116,7 +126,7 @@ class GsmTalker(StoppableThread):
         self.heartbeat_timer.start()
 
         # Publish the message
-        msg = {'type': 'HEARTBEAT', 'timestamp': time.time()}
+        msg = {'type': 'HEARTBEAT', 'timestamp': time.time(), 'connectionState': self.connection_state, 'gpsState': self.gps_state}
         self.transmit_queue.put(msg)
 
 
@@ -132,11 +142,18 @@ def main():
     receiver.start()
     talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
     talker.start()
+
+    connection_msg = {'type': 'CONNECTION_STATE', 'value': 1}
+    gsm_transmit_queue.put(connection_msg)
+
+    gps_msg = {'type': 'GPS_STATE', 'value': 2}
+    gsm_transmit_queue.put(gps_msg)
+
     do_exit = False
     while do_exit == False:
         try:
-            while not command_queue.empty():
-                print command_queue.get()
+            while not gsm_command_queue.empty():
+                print gsm_command_queue.get()
             time.sleep(0.1)
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
