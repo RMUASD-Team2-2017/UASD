@@ -58,6 +58,7 @@ class GsmListener(StoppableThread):
             self.channel.basic_ack(method.delivery_tag)
             decoded = json.loads(body)
             if decoded['type'] == 'HEARTBEAT':
+                #print 'Received Heartbeat:',decoded['connectionState'],decoded['gpsState']
                 with self.heartbeat_lock:
                     self.last_heartbeat = time.time()
                 self.receive_queue.put(decoded)
@@ -68,8 +69,9 @@ class GsmListener(StoppableThread):
     def handle_receive_queue(self):
         #rospy.loginfo('handler')
         while not self.receive_queue.empty():
-            rospy.loginfo('received')
+            #rospy.loginfo('received')
             msg = self.receive_queue.get()
+            #print json.dumps(msg)
             self.from_drone_publisher.publish(json.dumps(msg))
 
     def check_heartbeat(self):

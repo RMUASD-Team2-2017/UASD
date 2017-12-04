@@ -91,10 +91,12 @@ class GsmTalker(StoppableThread):
         self.channel.queue_declare(queue=self.topic)
 
     def run(self):
+    	
         # Start transmitting a heartbeat
         self.heartbeat()
         # Publish when messages are queued
         while self.stop_event.is_set() is False:
+            time.sleep(0.1)
             while not self.transmit_queue.empty():
                 msg = self.transmit_queue.get()
                 if msg['type'] == 'CONNECTION_STATE':
@@ -154,7 +156,7 @@ def main():
         try:
             while not gsm_command_queue.empty():
                 print gsm_command_queue.get()
-            time.sleep(0.1)
+                time.sleep(0.1)
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
             do_exit = True

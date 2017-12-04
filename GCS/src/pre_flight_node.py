@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import mavros
+import json
 import sensor_msgs
 from gcs.srv import *
 from std_msgs.msg import String
@@ -24,6 +25,16 @@ def globalPositionSubscriberCallback(msg):
 def dockDataSubscriberCallback(msg):
 	global cell_voltage
 	cell_voltage = msg.voltage
+
+def gsmSubscriberCallback(msg):
+	global gsm_ok
+	decoded = json.loads(msg.data)
+	conn_state = decoded['connectionState']
+	gps_state = decoded['gpsState']
+	#print "GSM content:",decoded['connectionState'],decoded['gpsState']
+	gsm_ok = (conn_state == 1) & (gps_state == 2)
+	#print gsm_ok
+	# gsm_ok = conn_ok && gps_ok
 
 def handle_pre_flight_srv(req):
 	weather = Weather()
@@ -49,6 +60,8 @@ def handle_pre_flight_srv(req):
 		rospy.loginfo(cell_voltage[i])
 		check = check & (cell_voltage[i] > 3.7)
 
+	check = check & gsm_ok
+
 	return preFlightResponse(check, tmpt, hmd, wspd, battery_voltage, pos_latitude, pos_longitude)
 
 def pre_flight():
@@ -57,19 +70,20 @@ def pre_flight():
 	global cell_voltage
 	cell_voltage = (0.0, 0.0, 0.0, 0.0);
 	rospy.loginfo("[pre_flight] Cell voltages: %f %f %f %f", cell_voltage[0], cell_voltage[1], cell_voltage[2], cell_voltage[3])
+	global gsm_ok
+	gsm_ok = False
 
 	rospy.init_node('pre_flight')
 	rospy.Subscriber("drone_communication/batteryStatus", BatteryStatus, batteryStatusSubscriberCallback)
 	rospy.Subscriber("drone_communication/globalPosition", NavSatFix, globalPositionSubscriberCallback)
 	rospy.Subscriber("docking_station/dock_data", dockData, dockDataSubscriberCallback)
+	rospy.Subscriber("gsm_listener/fromDrone", String, gsmSubscriberCallback)
 	# weather = Weather()
 	# weather.setLocation(55.471089000000006, 10.330159499999999, 1)
 	# rospy.loginfo(weather.getPrecipitation())
 	pfs = rospy.Service('pre_flight_node/preFlight', preFlight, handle_pre_flight_srv)
 	rospy.loginfo("[pre_flight] Node started.")
 	rospy.spin()
-
-	# TODO Check, through GSM, that OES is working and reports a positive status.
 
 if __name__ == '__main__':
     try:

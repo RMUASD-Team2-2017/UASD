@@ -191,7 +191,8 @@ void GCS_CONTROL_CLASS::run()
 				path_request.request.goal.lat = deploy_request.point.lat;
 				path_request.request.goal.lon = deploy_request.point.lon;
 				path_request.request.goal.alt = 0;
-				if ( !plan_path_service_client.call(path_request) ) {
+				bool ppcall = plan_path_service_client.call(path_request);
+				if ( !ppcall || !path_request.response.result) {
 					ROS_ERROR("[gcs_control] Plan path failed");
 					// state unchanged
 				}
