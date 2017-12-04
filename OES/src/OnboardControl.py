@@ -52,7 +52,7 @@ class OnboardControl(StoppableThread):
 
         self.signal_queue = drone_handler_signal_queue
 
-        self.action_list_terminate = [] # ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
+        self.action_list_terminate = [] # GpsMonitor.STATE_GEOFENCE_BREACH_CRITICAL should be here... I don't dare it yet
         self.action_list_land_here = [GpsMonitor.STATE_LOST, GpsMonitor.STATE_GEOFENCE_BREACH]
         self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
