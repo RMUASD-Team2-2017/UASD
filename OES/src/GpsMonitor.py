@@ -32,7 +32,9 @@ class GpsMonitor(StoppableThread):
 
     TIMEOUT_VALUE = 3
     LOST_TIME_VALUE = 10
-    MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 50
+    MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 25 # We don't fail if the deviation between the positions is below
+    MISMATCH_DEVIATION_ACCEPTANCE_DELAY = 15  # 15 extra meters pr second (based on 15 m/s speed)
+    MISMATCH_DEVIATION_ACCEPTANCE_MAX = 75  # Max difference no matter fix time
 
     def __init__(self, signal_function, get_external_pos, get_internal_pos, get_internal_home_pos, geofencefile = None, rate = 1):
         StoppableThread.__init__(self)
@@ -84,7 +86,10 @@ class GpsMonitor(StoppableThread):
                 internal_pos_utm = utm.from_latlon(internal_pos['position']['lat'], internal_pos['position']['lng'])
                 dist = sqrt((external_pos_utm[0]-internal_pos_utm[0])**2 + \
                        (external_pos_utm[1]-internal_pos_utm[1])**2)
-                if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE:
+                # Include time difference in calculations to allow for "errors" due to different fix times
+                time_diff = abs(external_pos['timestamp'] - internal_pos['timestamp']) # Time difference between gps stamps
+                if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE + time_diff*GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_DELAY and \
+                    dist <= GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_MAX:
                     if not self.geofence is None:
                         if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['position']['alt'])):
                             self.signal(GpsMonitor.STATE_OK)
