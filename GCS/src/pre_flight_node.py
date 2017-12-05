@@ -5,6 +5,7 @@ import json
 import sensor_msgs
 from gcs.srv import *
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 from weather import Weather
 from mavros_msgs.msg import BatteryStatus
 from sensor_msgs.msg import NavSatFix
@@ -35,6 +36,13 @@ def gsmSubscriberCallback(msg):
 	gsm_ok = (conn_state == 1) & (gps_state == 2)
 	#print gsm_ok
 	# gsm_ok = conn_ok && gps_ok
+	# The current state will not be updated if the link dies so we monitor the heartbeat as well
+	gsm_ok = gsm_ok & gsm_heartbeat
+	
+def gsmHeartbeatSubscriberCallback(msg):
+	global gsm_heartbeat
+	gsm_heartbeat = msg.data
+	#print gsm_heartbeat,gsm_ok
 
 def handle_pre_flight_srv(req):
 	weather = Weather()
@@ -72,12 +80,15 @@ def pre_flight():
 	rospy.loginfo("[pre_flight] Cell voltages: %f %f %f %f", cell_voltage[0], cell_voltage[1], cell_voltage[2], cell_voltage[3])
 	global gsm_ok
 	gsm_ok = False
+	global gsm_heartbeat
+	gsm_heartbeat = False
 
 	rospy.init_node('pre_flight')
 	rospy.Subscriber("drone_communication/batteryStatus", BatteryStatus, batteryStatusSubscriberCallback)
 	rospy.Subscriber("drone_communication/globalPosition", NavSatFix, globalPositionSubscriberCallback)
 	rospy.Subscriber("docking_station/dock_data", dockData, dockDataSubscriberCallback)
 	rospy.Subscriber("gsm_listener/fromDrone", String, gsmSubscriberCallback)
+	rospy.Subscriber("gsm_listener/heartbeat", Bool, gsmHeartbeatSubscriberCallback)
 	# weather = Weather()
 	# weather.setLocation(55.471089000000006, 10.330159499999999, 1)
 	# rospy.loginfo(weather.getPrecipitation())
