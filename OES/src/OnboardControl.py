@@ -47,7 +47,6 @@ class OnboardControl(StoppableThread):
         self.command_terminate = False
         self.command_land_here = False
         self.command_return_to_launch = False
-        self.land_here_paused = False
 
         self.signal_queue = drone_handler_signal_queue
 

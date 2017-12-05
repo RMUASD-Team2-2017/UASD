@@ -95,7 +95,7 @@ def main():
 
     # GsmHandler
     #pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    gsm_listener = GsmReceiver(pika_connection_string,command_queue, web_interface.get_last_ping_time)
+    gsm_listener = GsmReceiver(pika_connection_string,command_queue, request_id_queue, web_interface.get_last_ping_time)
     gsm_listener.start()
     gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue, web_interface.get_last_ping_time)
     gsm_talker.start()
