@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700,700i');
+
+.centerDiv {
+    margin: auto;
+    width: 90%;
+    padding: 10px;
+    font-family: 'Open Sans', sans-serif;
+}
+.button_style {
+    text-decoration: none;
+    color: #3a3a3a;
+    opacity: 0.9;
+}
+.button_style:hover {
+    color: #000000;
+    opacity: 1;
+}
