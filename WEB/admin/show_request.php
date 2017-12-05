@@ -59,8 +59,9 @@
             if ($request_approved != 0 && $request_approved != 2) {
                 echo '<p style="margin-bottom: 20px;">';
                 echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=1' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">TERMINATE</span></a>';
-                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=2' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">ABORT</span></a>';
-                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=3' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #ff7676; border-radius: 6px;">LAND</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=2' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FF6347; border-radius: 6px;">ABORT</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=3' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FF8C00; border-radius: 6px;">LAND</span></a>';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=4' .'" class="button_style confirmation_pause"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FFD700; border-radius: 6px;">PAUSE</span></a>';
                 echo '</p>';
             }
         } elseif ($request_stopped != 0) {
@@ -71,6 +72,11 @@
                 echo " (aborted)";
             } elseif ($request_stopped == 3) {
                 echo " (landed)";
+            } elseif ($request_stopped == 4) {
+                echo " (paused)";
+                echo '<p style="margin-bottom: 20px;">';
+                echo '<a href="https://www.techgen.dk/AED/admin/stop_request.php?id='. $request_id . '&page=show_request.php&severity=0' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FFD700; border-radius: 6px;">RESUME</span></a>';
+                echo '</p>';
             }
             echo '</span></p>';
         }
@@ -199,6 +205,9 @@
         echo '<script type="text/javascript">
             $(\'.confirmation\').on(\'click\', function () {
                 return confirm(\'Are you sure?\');
+            });
+            $(\'.confirmation_pause\').on(\'click\', function () {
+                return confirm(\'Are you sure?\nNOTE: this functionality is only applicable during landing\');
             });
             </script>';
 

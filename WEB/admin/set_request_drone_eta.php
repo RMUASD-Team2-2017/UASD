@@ -7,9 +7,14 @@
         die("Connection failed: " . mysqli_connect_error());
     }
 
+    $drone_altitude = 30; //unit: m
     $drone_velocity = 6; //unit: m/s
-    $take_off_time = 5; //unit: s; taken from second demo video
-    $landing_time = 10; //unit: s; taken from second demo video
+    $drone_climb_rate = 5; //unit: m/s
+    $drone_land_altitude = 10; //unit: m/s
+    $drone_descent_rate = 1.4; //unit: m/s
+
+    $take_off_time = round($drone_altitude/$drone_climb_rate,0); //unit: s
+    $landing_time = round($drone_land_altitude/$drone_descent_rate,0); //unit: s
 
     if (isset($_POST['request_id'])) {
         $request_id = $_POST['request_id'];
