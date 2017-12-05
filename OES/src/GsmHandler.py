@@ -9,6 +9,8 @@ from GpsMonitor import GpsMonitor
 
 logger = logging.getLogger(__name__)
 
+PING_TIMEOUT = 1.5
+start_time = time.time()
 
 class StoppableThread(threading.Thread):
     def __init__(self):
@@ -24,13 +26,14 @@ class StoppableThread(threading.Thread):
 
 
 class GsmReceiver(StoppableThread):
-    def __init__(self,pika_connection_string, command_queue, topic='/toDrone'):
+    def __init__(self,pika_connection_string, command_queue, ping_time_func, topic='/toDrone'):
         StoppableThread.__init__(self)
         self.daemon = False
         self.topic = topic
         self.command_queue = command_queue
         self.heartbeat = None
         self.heartbeat_lock = threading.Lock()
+        self.get_last_ping_time = ping_time_func
 
         # Pika setup
         parameters = pika.URLParameters(pika_connection_string)
@@ -41,23 +44,27 @@ class GsmReceiver(StoppableThread):
         # Connect with the queue
         self.channel.queue_declare(queue=self.topic)
         # Only one unacknowledged message allowed at a time
-        self.channel.basic_qos(prefetch_count=1)
+        #self.channel.basic_qos(prefetch_count=1)
 
     def run(self):
         logger.info('Started')
 
         ### Consume ###
         # The consuming is based on: https://stackoverflow.com/questions/32220057/interrupt-thread-with-start-consuming-method-of-pika
-        for message in self.channel.consume(self.topic,inactivity_timeout=1):
+        for message in self.channel.consume(self.topic,inactivity_timeout=1.0):
+            # Logging does not work in this loop for some reason
+            print 'One'
             if self.stop_event.is_set() == True:
                 # Exit the loop
                 # The channel must be closed to be able to change settings on restart
                 self.channel.cancel()
                 break
             if not message:
+                #print 'No msg'
                 continue
             # We have a message if we get here
             method, properties, body = message
+            #print 'body:', body
             self.channel.basic_ack(method.delivery_tag)
             decoded = json.loads(body)
             if decoded['type'] == 'HEARTBEAT':
@@ -65,6 +72,7 @@ class GsmReceiver(StoppableThread):
                     self.heartbeat = time.time()
             else:
                 self.command_queue.put(decoded)
+            #print 'done'
         self.channel.close()
         logger.info('Terminating')
 
@@ -74,7 +82,7 @@ class GsmReceiver(StoppableThread):
 
 
 class GsmTalker(StoppableThread):
-    def __init__(self, pika_connection_string, transmit_queue, topic='/toGcs', heartbeat_rate=1.0):
+    def __init__(self, pika_connection_string, transmit_queue, ping_time_func, topic='/toGcs', heartbeat_rate=2.0):
         StoppableThread.__init__(self)
         self.topic = topic
         self.transmit_queue = transmit_queue
@@ -82,6 +90,7 @@ class GsmTalker(StoppableThread):
         self.heartbeat_timer = None
         self.connection_state = ConnectionMonitor.STATE_CON_TELEMETRY_LOST_GSM_LOST
         self.gps_state = GpsMonitor.STATE_LOST
+        self.get_last_ping_time = ping_time_func
 
         parameters = pika.URLParameters(pika_connection_string)
         #parameters.socket_timeout = 1000
@@ -111,11 +120,13 @@ class GsmTalker(StoppableThread):
         self.channel.close()
 
     def publish(self,message):
-        self.channel.basic_publish(exchange='', \
-                                   routing_key=self.topic, \
-                                   body=message, \
-                                   properties=pika.BasicProperties( \
-                                    delivery_mode=1,)) # Non-persistent
+        if time.time() - self.get_last_ping_time() < PING_TIMEOUT:
+            logger.debug('Transmit')
+            self.channel.basic_publish(exchange='', \
+                                       routing_key=self.topic, \
+                                       body=message, \
+                                       properties=pika.BasicProperties( \
+                                        delivery_mode=1,)) # Non-persistent
 
     def publish_json(self,message):
         self.publish(json.dumps(message))
@@ -132,6 +143,13 @@ class GsmTalker(StoppableThread):
         self.transmit_queue.put(msg)
 
 
+def get_last_ping_time():
+    #if time.time() - start_time < 10 or time.time() - start_time > 15:
+    return time.time()
+    #else:
+    #    return start_time
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -140,10 +158,10 @@ def main():
     gsm_transmit_queue = Queue()
     # Pika is not thread safe so we just pass the connection string and not a connection
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    receiver = GsmReceiver(pika_connection_string,gsm_command_queue)
+    receiver = GsmReceiver(pika_connection_string,gsm_command_queue, get_last_ping_time)
     receiver.start()
-    talker = GsmTalker(pika_connection_string,gsm_transmit_queue)
-    talker.start()
+    #talker = GsmTalker(pika_connection_string,gsm_transmit_queue, get_last_ping_time)
+    #talker.start()
 
     connection_msg = {'type': 'CONNECTION_STATE', 'value': 1}
     gsm_transmit_queue.put(connection_msg)
@@ -162,7 +180,7 @@ def main():
             do_exit = True
 
     receiver.stop()
-    talker.stop()
+    #talker.stop()
 
 
 if __name__ == "__main__":
