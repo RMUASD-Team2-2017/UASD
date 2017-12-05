@@ -6,15 +6,23 @@
     if (!$con) {
         die("Connection failed: " . mysqli_connect_error());
     }
+
+    $page = $_SERVER['PHP_SELF'];
+    $sec = "2";
+
     $sql = "SELECT * FROM `AED_drone_list`";
     $result = mysqli_query($con, $sql);          //query
 
     echo '<!DOCTYPE html>
     <html>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="table.css">
+        <head>
+            <link rel="stylesheet" href="style.css">
+            <link rel="stylesheet" href="table.css">
+            <meta http-equiv="refresh" content="'.$sec.';URL='.$page.'">
+        </head>
     <body>
     <div class="centerDiv">
+    <center><a href="../">Request AED</a> - <b>Drones</b> - <a href="show_requests.php">Requests</a></center>
     <center><h1>AED UAVs</h1></center>';
 
     echo '<table class="customTableClass">
@@ -68,6 +76,9 @@
     </table>";
 
     echo "<i>* updated during pre-flight check</i>";
+    echo '<br />';
+    echo '<br />';
+    echo 'Updated: '.date('Y-m-d H:i:s', time()).' (refreshes every '.$sec.' seconds)';
     echo '</div>
     </body>
     </html>';

@@ -3,8 +3,8 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: techgen.dk.mysql:3306
--- Generation Time: Sep 23, 2017 at 12:19 PM
--- Server version: 10.1.26-MariaDB-1~xenial
+-- Generation Time: Oct 16, 2017 at 12:08 PM
+-- Server version: 10.1.28-MariaDB-1~xenial
 -- PHP Version: 5.4.45-0+deb7u11
 
 SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
@@ -33,8 +33,10 @@ CREATE TABLE IF NOT EXISTS `AED_requests` (
   `time` bigint(15) NOT NULL,
   `completed` bigint(15) NOT NULL,
   `eta` bigint(15) NOT NULL,
+  `approved` bigint(15) NOT NULL,
+  `stopped` int(1) NOT NULL,
   PRIMARY KEY (`int_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=46 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=167 ;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

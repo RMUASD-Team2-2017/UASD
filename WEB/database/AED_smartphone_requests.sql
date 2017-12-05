@@ -29,8 +29,8 @@ SET time_zone = "+00:00";
 CREATE TABLE IF NOT EXISTS `AED_smartphone_requests` (
   `int_id` int(10) NOT NULL AUTO_INCREMENT,
   `id` varchar(32) NOT NULL,
-  `loc_lat` float(22,18) NOT NULL,
-  `loc_lng` float(22,18) NOT NULL,
+  `loc_lat` float(8,5) NOT NULL,
+  `loc_lng` float(8,5) NOT NULL,
   `req_time` bigint(15) NOT NULL,
   `timestamp` bigint(15) NOT NULL,
   `loc_accuracy` float NOT NULL,

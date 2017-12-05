@@ -8,9 +8,9 @@
     }
 
     if (isset($_POST['show_uncompleted']) && $_POST['show_uncompleted'] == 1) {
-        $sql = "SELECT * FROM `AED_requests` WHERE  `completed` = 0 ORDER BY `int_id` DESC";
+        $sql = "SELECT * FROM `AED_requests` WHERE  `completed` = 0 AND `approved` != 0 AND `approved` != 2 AND `stopped`=0 ORDER BY `int_id` DESC";
     } else {
-        $sql = "SELECT * FROM `AED_requests` ORDER BY `int_id` DESC";
+        $sql = "SELECT * FROM `AED_requests` WHERE  `approved` != 0 AND `approved` != 2 ORDER BY `int_id` DESC";
     }
     $result = mysqli_query($con, $sql);          //query
     $combinedArray = array();
