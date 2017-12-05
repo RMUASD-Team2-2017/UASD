@@ -23,7 +23,7 @@ class StoppableThread(threading.Thread):
 
 
 class GsmListener(StoppableThread):
-    HEARTBEAT_TIMEOUT = 5.0
+    HEARTBEAT_TIMEOUT = 10.0
 
     def __init__(self, pika_connection_string, topic='/toGcs'):
         StoppableThread.__init__(self)

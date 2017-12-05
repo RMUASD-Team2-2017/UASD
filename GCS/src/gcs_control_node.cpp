@@ -5,6 +5,7 @@
 #include "gcs/waypoint.h"
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
+#include "gcs/land.h"
 #include "gcs/deploy_request.h"
 #include "gcs/startMission.h"
 #include "gcs/dockData.h"
@@ -62,6 +63,7 @@ class GCS_CONTROL_CLASS
 		ros::ServiceClient plan_path_service_client;
 		ros::ServiceClient upload_mission_service_client;
 		ros::ServiceClient arm_service_client;
+		ros::ServiceClient land_service_client;
 		ros::ServiceClient start_mission_service_client;
 		ros::ServiceClient open_dock_service_client;
 		ros::ServiceClient pre_flight_service_client;
@@ -76,6 +78,8 @@ class GCS_CONTROL_CLASS
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
 		ros::Subscriber dock_data_subscriber;
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
+		ros::Subscriber gsm_heartbeat_subscriber;
+		void gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg);
 
 		ros::Publisher uav_state_publisher;
 		ros::Publisher mission_completed_publisher;
@@ -99,6 +103,7 @@ class GCS_CONTROL_CLASS
 		std::vector<double> dock_voltage = {0, 0, 0, 0};
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 		double battery_voltage = 0;
+		bool gsm_heartbeat_status = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -135,6 +140,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	plan_path_service_client = nh.serviceClient<gcs::planPath>("/path_planner/plan");
 	upload_mission_service_client = nh.serviceClient<gcs::uploadMission>("/drone_communication/uploadMission");
 	arm_service_client = nh.serviceClient<gcs::arm>("/drone_communication/arm");
+	land_service_client = nh.serviceClient<gcs::land>("/drone_communication/land");
 	start_mission_service_client = nh.serviceClient<gcs::startMission>("drone_communication/startMission");
 	open_dock_service_client = nh.serviceClient<gcs::openDock>("/docking_station/openDock");
 	pre_flight_service_client = nh.serviceClient<gcs::preFlight>("/pre_flight_node/preFlight");
@@ -144,6 +150,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	drone_gps_subscriber = nh.subscribe<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1,&GCS_CONTROL_CLASS::droneGpsSubscriberCallback,this);
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
+	gsm_heartbeat_subscriber = nh.subscribe<std_msgs::Bool>("/gsm_listener/heartbeat",1,&GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback, this);
 
 	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
 	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
@@ -195,6 +202,7 @@ void GCS_CONTROL_CLASS::run()
 				if ( !ppcall || !path_request.response.result) {
 					ROS_ERROR("[gcs_control] Plan path failed");
 					// state unchanged
+					state = PREPARE;
 				}
 				else state = PREPARE;
 			}
@@ -307,6 +315,18 @@ void GCS_CONTROL_CLASS::run()
 					mission_completed_publisher.publish(complete_msg);
 				}
 				// Monitor during flight
+				if(!gsm_heartbeat_status) 
+				{
+					ROS_ERROR("[gcs_control] GSM HEARTBEAT LOST. LANDING AT CURRENT LOCATION.");
+					// Issue land command
+					gcs::land land_msg;
+					if( land_service_client.call(land_msg) && land_msg.response.result == SUCCESS)
+					{
+						ROS_INFO("[gcs_control] Emergency landing command successful.");
+						state = ARRIVED;
+					}
+					else ROS_ERROR("[gcs_control] EMERGENCY LANDING COMMAND FAILED.");
+				}
 			}
 			break;
 		case ARRIVED:
@@ -361,7 +381,11 @@ void GCS_CONTROL_CLASS::dockDataSubscriberCallback(const gcs::dockData::ConstPtr
 	dock_temperature = dock_sensor_data.temperature;
 	dock_humidity = dock_sensor_data.humidity;
 	dock_voltage = dock_sensor_data.voltage;
-	// dock_sensor_data = *msg;
+}
+
+void GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+	gsm_heartbeat_status = msg->data;
 }
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
