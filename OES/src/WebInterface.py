@@ -27,6 +27,8 @@ class webApi:
         self.url = url
         self.username = ''
         self.password = ''
+        self.lock = threading.Lock()
+        self.timestamp = time.time()
 
     def setAuthentication(self,_username,_password):
         self.username = _username
@@ -37,6 +39,9 @@ class webApi:
         r = ''
         try:
             r = requests.post(url = self.url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
+            with self.lock:
+                self.timestamp = time.time()
+                print 'timestamp:', self.timestamp
         except:
             logger.error(' Error in polling abort state')
             return -1
@@ -58,6 +63,9 @@ class webApi:
         print jsonformat[0]
         return int(jsonformat)
 
+    def get_last_ping(self):
+        with self.lock:
+            return self.timestamp
 
 class WebInterface(StoppableThread):
     ABORT_STATE_NEUTRAL = 0
@@ -72,6 +80,8 @@ class WebInterface(StoppableThread):
         self.web_interface = webApi(url='https://www.techgen.dk/AED/admin/get_drone_stop.php')
         self.web_interface.setAuthentication('uasd','halogenlampe')
 
+    def get_last_ping_time(self):
+        return self.web_interface.get_last_ping()
 
     def run(self):
         logger.info('web_interface started')
@@ -109,6 +119,7 @@ def main():
         try:
             while not command_queue.empty():
                 print 'Command queue:', command_queue.get()
+            print webInterface.get_last_ping_time()
             time.sleep(0.1)
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
