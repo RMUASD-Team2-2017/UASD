@@ -79,6 +79,7 @@ def main():
     command_queue = Queue()
     gsm_transmit_queue = Queue()
     drone_handler_signal_queue = Queue()
+    request_id_queue = Queue()
     external_gps_module = GpsModule(gps_string,gps_baud)
     external_gps_module.start()
     drone_handler = DroneHandler_pymavlink(fc_connection_string,drone_handler_signal_queue,fc_connection_baud) # NOTE: The bad must be implemented in instantiation of dronekit
@@ -89,7 +90,7 @@ def main():
     gps_monitor.start()
 
     # Web interface
-    web_interface = WebInterface(command_queue)
+    web_interface = WebInterface(command_queue, request_id_queue)
     web_interface.start()
 
     # GsmHandler

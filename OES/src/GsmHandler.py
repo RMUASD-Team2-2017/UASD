@@ -26,7 +26,7 @@ class StoppableThread(threading.Thread):
 
 
 class GsmReceiver(StoppableThread):
-    def __init__(self,pika_connection_string, command_queue, ping_time_func, topic='/toDrone'):
+    def __init__(self,pika_connection_string, command_queue, request_id_queue, ping_time_func, topic='/toDrone'):
         StoppableThread.__init__(self)
         self.daemon = False
         self.topic = topic
@@ -34,6 +34,7 @@ class GsmReceiver(StoppableThread):
         self.heartbeat = None
         self.heartbeat_lock = threading.Lock()
         self.get_last_ping_time = ping_time_func
+        self.request_id_queue = request_id_queue
 
         # Pika setup
         parameters = pika.URLParameters(pika_connection_string)
@@ -70,6 +71,7 @@ class GsmReceiver(StoppableThread):
             if decoded['type'] == 'HEARTBEAT':
                 with self.heartbeat_lock:
                     self.heartbeat = time.time()
+                self.request_id_queue.put(decoded['uuid'])
             else:
                 self.command_queue.put(decoded)
             #print 'done'
