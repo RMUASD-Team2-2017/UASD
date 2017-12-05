@@ -4,6 +4,7 @@ import logging
 from Queue import Queue
 from dronekit import connect, VehicleMode, Command, LocationGlobal
 from pymavlink import mavutil
+from RPiGpio import io
 
 forever = 60*60*24*365*100
 
@@ -164,6 +165,7 @@ class DroneHandler_pymavlink(StoppableThread):
         self.number_of_waypoints = None
         self.request_mission_list_sent = False
         self.state = DroneHandler_pymavlink.STATE_IDLE
+        self.hi_control = io()
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -220,21 +222,26 @@ class DroneHandler_pymavlink(StoppableThread):
     def completion_statemachine(self):
         with self.state_lock:
             if self.state is DroneHandler_pymavlink.STATE_IDLE:
+                self.hi_control.hi_safe()
                 if self.armed is True:
                     self.state = DroneHandler_pymavlink.STATE_TAKEOFF
+                    self.hi_control.hi_landing_siren()
                     logger.info('State: Takeoff')
                     self.request_mission_list() # Request number of waypoints. Gives a timeout because we never request the waypoints
             elif self.state is DroneHandler_pymavlink.STATE_TAKEOFF:
                 if self.current_waypoint > 0:
                     self.state = DroneHandler_pymavlink.STATE_ENROUTE
+                    self.hi_control.hi_flash_rotation_indicators_siren()
                     logger.info('State: Enroute')
             elif self.state is DroneHandler_pymavlink.STATE_ENROUTE:
                 if self.current_waypoint == self.number_of_waypoints-1:
                     self.state = DroneHandler_pymavlink.STATE_LANDING
+                    self.hi_control.hi_landing_siren()
                     logger.info('State: Landing')
             elif self.state is DroneHandler_pymavlink.STATE_LANDING:
                 if self.armed is False:
                     self.state = DroneHandler_pymavlink.STATE_LANDED
+                    self.hi_control.hi_safe()
                     logger.info('State: Landed')
             elif self.state is DroneHandler_pymavlink.STATE_LANDED:
                 pass

@@ -47,11 +47,12 @@ class OnboardControl(StoppableThread):
         self.command_terminate = False
         self.command_land_here = False
         self.command_return_to_launch = False
+        self.land_here_paused = False
         self.ready # Ready state to transmit over gsm
 
         self.signal_queue = drone_handler_signal_queue
 
-        self.action_list_terminate = [] # ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
+        self.action_list_terminate = [] # GpsMonitor.STATE_GEOFENCE_BREACH_CRITICAL should be here... I don't dare it yet
         self.action_list_land_here = [GpsMonitor.STATE_LOST, GpsMonitor.STATE_GEOFENCE_BREACH]
         self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
@@ -114,8 +115,18 @@ class OnboardControl(StoppableThread):
                     self.command_land_here = True
                     logger.info('GSM_COMMAND: Land here')
                 elif msg['type'] == 'ACTION_RETURN_TO_LAUNCH':
-                    self.command_return_to_launch = True
-                    logger.info('GSM_COMMAND: Return to launch')
+                    ''' We use this command to pause and restart an ongoing landing'''
+                    #self.command_return_to_launch = True
+                    #logger.info('GSM_COMMAND: Return to launch')
+                    if self.land_here_activated:
+                        if self.land_here_paused: # If it has been paused
+                            # Continue the landing
+                            self.land_here_paused = False
+                            self.drone_handler.land_at_current_location()
+                        else: # If not
+                            # Pause the landing
+                            self.land_here_paused = True
+                            self.drone_handler.loiter()
 
             # Publish states to the gsm node
             if self.connection_state:

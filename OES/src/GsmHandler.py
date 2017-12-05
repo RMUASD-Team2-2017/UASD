@@ -84,8 +84,8 @@ class GsmTalker(StoppableThread):
         self.gps_state = GpsMonitor.STATE_LOST
 
         parameters = pika.URLParameters(pika_connection_string)
-        parameters.socket_timeout = 1000
-        parameters.blocked_connection_timeout = 1000
+        #parameters.socket_timeout = 1000
+        #parameters.blocked_connection_timeout = 1000
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.topic)
