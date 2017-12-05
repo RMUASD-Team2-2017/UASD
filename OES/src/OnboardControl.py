@@ -48,7 +48,6 @@ class OnboardControl(StoppableThread):
         self.command_land_here = False
         self.command_return_to_launch = False
         self.land_here_paused = False
-        self.ready # Ready state to transmit over gsm
 
         self.signal_queue = drone_handler_signal_queue
 
