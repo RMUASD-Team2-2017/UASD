@@ -39,7 +39,6 @@
 
 
 
-// TODO Include mavlink to/from message types
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -224,7 +223,7 @@ DRONE_COMM_CLASS::DRONE_COMM_CLASS(ros::NodeHandle n)
 	commandLongServiceClient = nh.serviceClient<mavros_msgs::CommandLong>("/mavros/cmd/command");
 
 	// Publishers
-	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
+	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communicationStatus",1);
 	dronePositionPublisher = nh.advertise<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1);
 	statePublisher = nh.advertise<mavros_msgs::State>("/drone_communication/droneState",1);
 	missionStatusPublisher = nh.advertise<mavros_msgs::WaypointList>("/drone_communication/missionState",1);
