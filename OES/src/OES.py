@@ -97,18 +97,18 @@ def main():
     #pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsm_listener = GsmReceiver(pika_connection_string,command_queue, web_interface.get_last_ping_time)
     gsm_listener.start()
-    #gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue, web_interface.get_last_ping_time)
-    #gsm_talker.start()
+    gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue, web_interface.get_last_ping_time)
+    gsm_talker.start()
 
     # To drone sniffer
-    #sniff_to_drone = MavlinkListener(to_drone_sniff_port,baud=57600)
-    #sniff_to_drone.start()
+    sniff_to_drone = MavlinkListener(to_drone_sniff_port,baud=57600)
+    sniff_to_drone.start()
 
     # ConnectionMonitor
     #connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
     #                                       gsm_listener.get_heartbeat)
 
-    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, dummy_get_heartbeat,
+    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
                                            gsm_listener.get_heartbeat, get_hb_drone_serial2=drone_handler.get_heartbeat)
 
     connection_monitor.start()
