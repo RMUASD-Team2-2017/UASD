@@ -115,18 +115,15 @@ class OnboardControl(StoppableThread):
                     self.command_land_here = True
                     logger.info('GSM_COMMAND: Land here')
                 elif msg['type'] == 'ACTION_RETURN_TO_LAUNCH':
-                    ''' We use this command to pause and restart an ongoing landing'''
-                    #self.command_return_to_launch = True
-                    #logger.info('GSM_COMMAND: Return to launch')
-                    if self.land_here_activated:
-                        if self.land_here_paused: # If it has been paused
-                            # Continue the landing
-                            self.land_here_paused = False
-                            self.drone_handler.land_at_current_location()
-                        else: # If not
-                            # Pause the landing
-                            self.land_here_paused = True
-                            self.drone_handler.loiter()
+                    self.command_return_to_launch = True
+                    logger.info('GSM_COMMAND: Return to launch')
+                elif msg['type'] == 'ACTION_PAUSE_LANDING':
+                    self.land_here_paused = True
+                    self.drone_handler.loiter()
+                elif msg['type'] == 'ACTION_NEURAL':
+                    if self.land_here_paused:
+                        self.land_here_paused = False
+                        self.drone_handler.land_at_current_location()
 
             # Publish states to the gsm node
             if self.connection_state:

@@ -77,6 +77,7 @@ class WebInterface(StoppableThread):
     ABORT_STATE_TERMINATE = 1
     ABORT_STATE_ABORT = 2
     ABORT_STATE_LAND = 3
+    ABORT_STATE_PAUSE_LANDING = 4
 
     def __init__(self, gsm_command_queue, request_id_queue, rate = 1):
         StoppableThread.__init__(self)
@@ -94,6 +95,8 @@ class WebInterface(StoppableThread):
             abort_state = self.web_interface.getAbortState()
             if abort_state == WebInterface.ABORT_STATE_NEUTRAL:
                 logger.debug('Abort state: NEUTRAL')
+                msg = {'type': 'ACTION_NEURAL'}
+                self.command_queue.put(msg)
             elif abort_state == WebInterface.ABORT_STATE_TERMINATE:
                 msg = {'type': 'ACTION_TERMINATE'}
                 self.command_queue.put(msg)
@@ -104,6 +107,10 @@ class WebInterface(StoppableThread):
                 logger.debug('Abort state: ABORT')
             elif abort_state == WebInterface.ABORT_STATE_LAND:
                 msg = {'type': 'ACTION_LAND_HERE'}
+                self.command_queue.put(msg)
+                logger.debug('Abort state: LAND')
+            elif abort_state == WebInterface.ABORT_STATE_PAUSE_LANDING:
+                msg = {'type': 'ACTION_PAUSE_LANDING'}
                 self.command_queue.put(msg)
                 logger.debug('Abort state: LAND')
 
