@@ -30,7 +30,7 @@ class webApi:
         self.lock = threading.Lock()
         self.timestamp = time.time()
         self.request_id_queue = request_id_queue
-        self.request_id = 0
+        self.request_id = '0'
 
     def setAuthentication(self,_username,_password):
         self.username = _username
@@ -38,7 +38,7 @@ class webApi:
 
 
     def getAbortState(self):
-        if self.request_id == 0 and not self.request_id_queue.empty():
+        if self.request_id == '0' and not self.request_id_queue.empty():
             self.request_id = self.request_id_queue.get()
         payload = {'request_id': self.request_id}
         r = ''

@@ -54,7 +54,7 @@ class GsmReceiver(StoppableThread):
         # The consuming is based on: https://stackoverflow.com/questions/32220057/interrupt-thread-with-start-consuming-method-of-pika
         for message in self.channel.consume(self.topic,inactivity_timeout=1.0):
             # Logging does not work in this loop for some reason
-            print 'One'
+            #print 'One'
             if self.stop_event.is_set() == True:
                 # Exit the loop
                 # The channel must be closed to be able to change settings on restart
@@ -158,9 +158,10 @@ def main():
     logger.info('test')
     gsm_command_queue = Queue()
     gsm_transmit_queue = Queue()
+    request_id_queue = Queue()
     # Pika is not thread safe so we just pass the connection string and not a connection
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    receiver = GsmReceiver(pika_connection_string,gsm_command_queue, get_last_ping_time)
+    receiver = GsmReceiver(pika_connection_string,gsm_command_queue, request_id_queue, get_last_ping_time)
     receiver.start()
     #talker = GsmTalker(pika_connection_string,gsm_transmit_queue, get_last_ping_time)
     #talker.start()
@@ -175,7 +176,10 @@ def main():
     while do_exit == False:
         try:
             while not gsm_command_queue.empty():
-                print gsm_command_queue.get()
+                print 'command:', gsm_command_queue.get()
+            while not request_id_queue.empty():
+                print 'command:'
+                print 'id:',request_id_queue.get()
                 time.sleep(0.1)
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
