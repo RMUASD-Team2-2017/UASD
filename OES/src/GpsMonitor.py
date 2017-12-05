@@ -33,8 +33,8 @@ class GpsMonitor(StoppableThread):
     STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH_CRITICAL'
 
 
-    TIMEOUT_VALUE = 3
-    LOST_TIME_VALUE = 10
+    TIMEOUT_VALUE = 2
+    LOST_TIME_VALUE = 5
     MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 25 # We don't fail if the deviation between the positions is below
     MISMATCH_DEVIATION_ACCEPTANCE_DELAY = 15  # 15 extra meters pr second (based on 15 m/s speed)
     MISMATCH_DEVIATION_ACCEPTANCE_MAX = 75  # Max difference no matter fix time
