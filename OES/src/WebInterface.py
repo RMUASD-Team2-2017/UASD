@@ -23,19 +23,24 @@ class StoppableThread(threading.Thread):
 
 
 class webApi:
-    def __init__(self,url='https://www.techgen.dk/AED/admin/get_drone_stop.php'):
+    def __init__(self, request_id_queue, url='https://www.techgen.dk/AED/admin/get_request_stop.php'):
         self.url = url
         self.username = ''
         self.password = ''
         self.lock = threading.Lock()
         self.timestamp = time.time()
+        self.request_id_queue = request_id_queue
+        self.request_id = 0
 
     def setAuthentication(self,_username,_password):
         self.username = _username
         self.password = _password
 
+
     def getAbortState(self):
-        payload = {'drone_id': '1'}
+        if self.request_id == 0 and not self.request_id_queue.empty():
+            self.request_id = self.request_id_queue.get()
+        payload = {'request_id': self.request_id}
         r = ''
         try:
             r = requests.post(url = self.url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
@@ -73,11 +78,11 @@ class WebInterface(StoppableThread):
     ABORT_STATE_ABORT = 2
     ABORT_STATE_LAND = 3
 
-    def __init__(self, gsm_command_queue, rate = 1):
+    def __init__(self, gsm_command_queue, request_id_queue, rate = 1):
         StoppableThread.__init__(self)
         self.rate = float(rate)
         self.command_queue = gsm_command_queue
-        self.web_interface = webApi(url='https://www.techgen.dk/AED/admin/get_drone_stop.php')
+        self.web_interface = webApi(request_id_queue, url='https://www.techgen.dk/AED/admin/get_request_stop.php')
         self.web_interface.setAuthentication('uasd','halogenlampe')
 
     def get_last_ping_time(self):
@@ -111,7 +116,9 @@ def main():
     logger = logging.getLogger(__name__)
     logger.info('test')
     command_queue = Queue()
-    webInterface = WebInterface(command_queue)
+    request_id_queue = Queue()
+    request_id_queue.put('7c276ba66f368d8a51118093967d7a')
+    webInterface = WebInterface(command_queue, request_id_queue)
     webInterface.start()
 
     do_exit = False
