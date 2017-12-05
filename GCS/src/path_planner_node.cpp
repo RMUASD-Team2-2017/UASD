@@ -19,7 +19,7 @@
 // Defines
 #define MAX_WAYPOINT_DISTANCE 900.0
 #define SHRINK_METERS 1.0F
-#define CRUISE_HEIGHT 15.0
+#define CRUISE_HEIGHT 30.0
 
 #define NAME_AS_STRING(macro) #macro
 #define VALUE_AS_STRING(macro) NAME_AS_STRING(macro)
@@ -59,7 +59,7 @@ gcs::path planPath()
 
     // Find the path to the geofence file
     std::string geofence_file;
-    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/fences/geofence.csv");
+    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/fences/model_airfield_fence.csv");
 
     // Load geofence file
     bool fence_load_sucess= fence.set_fence_csv(geofence_file, true);
