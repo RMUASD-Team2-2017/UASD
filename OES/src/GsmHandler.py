@@ -48,7 +48,7 @@ class GsmReceiver(StoppableThread):
         #self.channel.basic_qos(prefetch_count=1)
 
     def run(self):
-        logger.info('Started')
+        logger.info(' Receiver Started')
 
         ### Consume ###
         # The consuming is based on: https://stackoverflow.com/questions/32220057/interrupt-thread-with-start-consuming-method-of-pika
@@ -71,6 +71,7 @@ class GsmReceiver(StoppableThread):
             if decoded['type'] == 'HEARTBEAT':
                 with self.heartbeat_lock:
                     self.heartbeat = time.time()
+               # print decoded
                 self.request_id_queue.put(decoded['uuid'])
             else:
                 self.command_queue.put(decoded)
@@ -102,7 +103,7 @@ class GsmTalker(StoppableThread):
         self.channel.queue_declare(queue=self.topic)
 
     def run(self):
-    	
+    	logger.info('Talker started')
         # Start transmitting a heartbeat
         self.heartbeat()
         # Publish when messages are queued

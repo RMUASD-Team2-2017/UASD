@@ -73,7 +73,7 @@ def dummy_get_heartbeat():
     return time.time()
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     logger.info('OES started')
     command_queue = Queue()
@@ -108,7 +108,7 @@ def main():
     #connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
     #                                       gsm_listener.get_heartbeat)
 
-    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
+    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, dummy_get_heartbeat,
                                            gsm_listener.get_heartbeat, get_hb_drone_serial2=drone_handler.get_heartbeat)
 
     connection_monitor.start()
@@ -130,8 +130,8 @@ def main():
     onboard_control.stop()
     drone_handler.stop()
     gsm_listener.stop()
-    #gsm_talker.stop()
-    #sniff_to_drone.stop()
+    gsm_talker.stop()
+    sniff_to_drone.stop()
     connection_monitor.stop()
     web_interface.stop()
     print threading.enumerate()

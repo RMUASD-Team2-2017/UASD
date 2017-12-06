@@ -166,17 +166,20 @@ class DroneHandler_pymavlink(StoppableThread):
         self.request_mission_list_sent = False
         self.state = DroneHandler_pymavlink.STATE_IDLE
         self.hi_control = io()
-
+        self.idle_output_counter = 0
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
         else:
             self.mav_interface = mavutil.mavlink_connection(port, baud=baud, autoreconnect=True)
 
     def run(self):
+        logger.info(' Started')
+
         while self.stop_event.is_set() is False:
 
             # Receive messages
             m = self.mav_interface.recv_msg()
+#            print m
             if m:
                 if m.get_type() == 'HEARTBEAT':
                     with self.heartbeat_lock:
@@ -223,6 +226,10 @@ class DroneHandler_pymavlink(StoppableThread):
         with self.state_lock:
             if self.state is DroneHandler_pymavlink.STATE_IDLE:
                 self.hi_control.hi_safe()
+                self.idle_output_counter += 1
+                if  self.idle_output_counter == 100:
+                    logger.info('State: Idle')
+                    self.idle_output_counter = 0
                 if self.armed is True:
                     self.state = DroneHandler_pymavlink.STATE_TAKEOFF
                     self.hi_control.hi_landing_siren()
@@ -312,7 +319,7 @@ def main_pymavlink():
     logger = logging.getLogger(__name__)
     logger.info('Started')
     drone_handler_signal_queue = Queue()
-    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540',drone_handler_signal_queue)
+    drone_handler = DroneHandler_pymavlink('/dev/serial0',drone_handler_signal_queue, baud=57600)
     drone_handler.start()
 
     do_exit = False
