@@ -117,7 +117,7 @@ class GCS_CONTROL_CLASS
 		double battery_voltage = 0;
 		bool gsm_heartbeat_status = 0;
 		gsmMissionUploadState gsm_mission_upload_state = GSM_MISSION_UPLOAD_IDLE;
-
+		int gsm_mission_upload_attempts = 0;
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
 	// Implemented as dockData topic
@@ -229,7 +229,7 @@ void GCS_CONTROL_CLASS::run()
 
 				if( mission_upload_state == PATH_RECEIVED )
 				{
-					switch (gsm_mission_upload_state)
+					switch (gsm_mission_upload_state) {
 						case GSM_MISSION_UPLOAD_IDLE:
 							gsm_mission_upload_publisher.publish(planned_path);
 							gsm_mission_upload_state = GSM_MISSION_UPLOAD_IN_PROGRESS;
@@ -238,23 +238,25 @@ void GCS_CONTROL_CLASS::run()
 						case GSM_MISSION_UPLOAD_IN_PROGRESS:
 							break;
 						case GSM_MISSION_UPLOAD_SUCCESS:
+							ROS_INFO("[gcs_control] Gsm upload success"
 							mission_upload_state = UPLOAD_SUCCESS;
 							break;
 						case GSM_MISSION_UPLOAD_FAILED:
-							ROS_INFO('[gcs_control] Failed to upload mission on gsm');
-							if(gsm_mission_upload_attempts < 10) {
-								ROS_INFO('[gcs_control] Will retry');
+							ROS_INFO("[gcs_control] Failed to upload mission on gsm");
+							if (gsm_mission_upload_attempts < 10) {
+								ROS_INFO("[gcs_control] Will retry");
 								gsm_mission_upload_state = GSM_MISSION_UPLOAD_IDLE;
+								gsm_mission_upload_attempts += 1;
+							} else {
+								ROS_INFO("[gcs_control] Not able to upload mission on gsm");
+								gsm_mission_upload_state = GSM_MISSION_UPLOAD_ERROR;
 							}
-							else
-							{
-								ROS_INFO('[gcs_control] Not able to upload mission on gsm!');
-								gsm_mission_upload_state = GSM_MISSION_UPLOAD_ERROR
-							}
+							break;
 						case GSM_MISSION_UPLOAD_ERROR:
+						default:
 							break;
 
-
+					}
 					/*gcs::uploadMission mission_upload_msg;
 					mission_upload_msg.request.waypoints = planned_path;
 					if( upload_mission_service_client.call(mission_upload_msg) && mission_upload_msg.response.result == SUCCESS )

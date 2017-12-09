@@ -5,8 +5,10 @@ import json
 import threading
 import time
 from gcs.msg import toDroneData
+from gcs.msg import path
 from Queue import Queue
 from std_msgs.msg import String
+from rospy_message_converter import message_converter
 
 
 class GsmTalker:
@@ -16,6 +18,8 @@ class GsmTalker:
                                                          self.send_to_drone_subscriber_callback, queue_size=10)
         self.request_id_subscriber = rospy.Subscriber("/web_interface/request_id", String, self.requestIdCallback,
                                                                           queue_size=1)
+        self.request_id_subscriber = rospy.Subscriber("/gsm_talker/mission_upload", path, self.uploadMissionCallback,
+                                                      queue_size=1)
         self.topic = topic
         parameters = pika.URLParameters(pika_connection_string)
         self.connection = pika.BlockingConnection(parameters)
@@ -34,6 +38,12 @@ class GsmTalker:
     def requestIdCallback(self, data):
         self.request_id = data.data
 
+    def uploadMissionCallback(self,data):
+        print data
+        json_msg = message_converter.convert_ros_message_to_dictionary(data)
+        print json_msg
+        json_msg['type'] = 'MISSION'
+        self.transmit_queue.put(json_msg)
 
     def run(self):
         while not self.transmit_queue.empty():

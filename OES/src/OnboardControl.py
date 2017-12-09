@@ -128,6 +128,7 @@ class OnboardControl(StoppableThread):
                         self.drone_handler.land_at_current_location()
                 elif msg['type'] == 'MISSION':
                     #Upload the mission to the FC
+                    logger.info('Gsm mission upload recieved')
                     self.drone_handler.upload_mission(msg)
 
             # Publish states to the gsm node

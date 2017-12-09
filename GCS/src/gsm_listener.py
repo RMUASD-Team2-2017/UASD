@@ -43,6 +43,7 @@ class GsmListener(StoppableThread):
 
         self.from_drone_publisher = rospy.Publisher("/gsm_listener/fromDrone", String, queue_size=10)
         self.gsm_heartbeat_publisher = rospy.Publisher("/gsm_listener/heartbeat", Bool, queue_size=1)
+        self.mission_upload_result_publisher = rospy.Publisher("/gsm_listener/mission_upload_result", Bool, queue_size=1)
 
     def run(self):
         for message in self.channel.consume(self.topic, inactivity_timeout=1):
@@ -63,6 +64,13 @@ class GsmListener(StoppableThread):
                 with self.heartbeat_lock:
                     self.last_heartbeat = time.time()
                 self.receive_queue.put(decoded)
+            elif decoded['type'] == 'MISSION_RESULT':
+                if decoded['value'] == True:
+                    print ' Mission uploaded'
+                    self.mission_upload_result_publisher.publish(True)
+                else:
+                    print 'Mission upload fail'
+                    self.mission_upload_result_publisher.publish(False)
             else:
                 self.receive_queue.put(decoded)
         self.channel.close()

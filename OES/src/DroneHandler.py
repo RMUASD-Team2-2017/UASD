@@ -174,6 +174,7 @@ class DroneHandler_pymavlink(StoppableThread):
             self.hi_control = io()
         self.idle_output_counter = 0
         self.waypoints = mavwp.MAVWPLoader()
+        self.clearing_waypoints = threading.Event()
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -232,11 +233,18 @@ class DroneHandler_pymavlink(StoppableThread):
                         print self.waypoints.wp(m.seq)
                         self.mav_interface.mav.send(self.waypoints.wp(m.seq))
                 if m.get_type() == 'MISSION_ACK':
+                    # We get this after complete mission waypoint upload and clearing
                     print m
-                    msg = {'type': 'MISSION_RESULT', 'value': False}
-                    if m.type == 0:
-                        msg['value'] = True
-                    self.gsm_transmit_queue.put(msg)
+
+                    # Check if it was because of waypoint clearing or upload
+                    if self.clearing_waypoints.is_set():
+                        self.clearing_waypoints.clear()
+                    else:
+                        msg = {'type': 'MISSION_RESULT', 'value': False}
+                        if m.type == 0:
+                            msg['value'] = True
+                        print msg
+                        self.gsm_transmit_queue.put(msg)
 
                 # Update completion state - only relevant when we have got new information
                 self.completion_statemachine()
@@ -327,43 +335,65 @@ class DroneHandler_pymavlink(StoppableThread):
             return self.state
 
     def upload_mission(self,mission):
+        # ROS constants
+        SYS_ID = 1
+        COMP_ID = 1
+        ROS_TAKEOFF = 0
+        ROS_WAYPOINT = 1
+        ROS_LAND = 2
+
+        # Mission constants
+        HOLD_TIME = 0.0
+        ACCEPTANCE_RADIUS = 1.0
+
 
         with self.waypoints_lock:
             # Based on https://gist.github.com/donghee/8d8377ba51aa11721dcaa7c811644169
             logger.info('Upload mission')
-            waypoints = [
-                (47.3977418, 8.5455938),
-                (47.3978, 8.5456),
-                (47.3977418, 8.5455938)
-            ]
-            NAV_WAYPOINT = 16
-            NAV_LAND = 21
-            NAV_TAKEOFF = 22
-            for waypoint in enumerate(waypoints):
+            path = mission['path']
+            print mission
+            print path
+
+            # Clear waypoints in uploader
+            self.waypoints.clear()
+
+            # Add waypoints to the uploader
+            for waypoint in enumerate(path):
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
                 seq = waypoint[0]
-                lat, lon = waypoint[1]
-                altitude = 15
+                lat = waypoint[1]['lat']
+                lon = waypoint[1]['lon']
+                altitude = waypoint[1]['alt']
                 autocontinue = 1
                 current = 0
-                if seq == 0: # first waypoint to takeoff
-                    current = 1
-                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_TAKEOFF, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
-                elif seq == len(waypoints) - 1: # last waypoint to land
-                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_LAND, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
-                else:
-                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_WAYPOINT, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
+                param1 = 0
+                param2 = 0
+                param3 = 0
+                param4 = 0
+                if waypoint[1]['type'] == ROS_TAKEOFF:
+                    command = mavutil.mavlink.MAV_CMD_NAV_TAKEOFF
+
+                elif waypoint[1]['type'] == ROS_WAYPOINT:
+                    command = mavutil.mavlink.MAV_CMD_NAV_WAYPOINT
+                    param1 = HOLD_TIME
+                    param2 = ACCEPTANCE_RADIUS
+                    param3 = 0
+                    param4 = 0
+                elif waypoint[1]['type'] == ROS_LAND:
+                    command = mavutil.mavlink.MAV_CMD_NAV_LAND
+                p = mavutil.mavlink.MAVLink_mission_item_message(SYS_ID, COMP_ID, seq, frame, command, current, autocontinue,
+                                                                 param1, param2, param3, param4, lat, lon, altitude)
+                # Add the point
                 self.waypoints.add(p)
-                i = 0
-            for i in range(0, 5):
-                print self.waypoints.wp(i)
-                i += i
 
             # Clear current waypoints
+            self.clearing_waypoints.set()
             self.mav_interface.waypoint_clear_all_send()
+
             # Allow the flight controller to receive it
             time.sleep(1)
-            #Published the number of waypoints
+
+            #Publish the number of waypoints to start upload
             self.mav_interface.waypoint_count_send(self.waypoints.count())
 
 
@@ -411,7 +441,7 @@ def test_mission_upload():
     drone_handler = DroneHandler_pymavlink('127.0.0.1:14540', drone_handler_signal_queue, gsm_transmit_queue, baud=57600)
     drone_handler.start()
 
-    mission = 0
+    mission = {'path': [{'lat': 0.0, 'lon': 0.0, 'alt': 15.0, 'type': 0}, {'lat': 55.395301818847656, 'lon': 10.37147045135498, 'alt': 15.0, 'type': 1}, {'lat': 55.395301818847656, 'lon': 10.37147045135498, 'alt': 0.0, 'type': 2}], 'type': u'MISSION'}
     print 'Upload succes:', drone_handler.upload_mission(mission)
 
     do_exit = False

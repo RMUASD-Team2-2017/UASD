@@ -80,39 +80,18 @@ def main():
     gsm_transmit_queue = Queue()
     drone_handler_signal_queue = Queue()
     request_id_queue = Queue()
-    external_gps_module = GpsModule(gps_string,gps_baud)
-    external_gps_module.start()
-    drone_handler = DroneHandler_pymavlink(fc_connection_string, drone_handler_signal_queue, gsm_transmit_queue, fc_connection_baud)
+
+    drone_handler = DroneHandler_pymavlink(fc_connection_string,drone_handler_signal_queue,gsm_transmit_queue,fc_connection_baud)
     drone_handler.start()
     onboard_control = OnboardControl(drone_handler, drone_handler_signal_queue, gsm_transmit_queue, command_queue, rate = 1)
-    gps_monitor = GpsMonitor(onboard_control.signal_gps_state, external_gps_module.get_position, drone_handler.get_position, drone_handler.get_home_position,
-                             geofencefile=geofence_file)
-    gps_monitor.start()
 
-    # Web interface
-    web_interface = WebInterface(command_queue, request_id_queue)
-    web_interface.start()
 
     # GsmHandler
     #pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
-    gsm_listener = GsmReceiver(pika_connection_string,command_queue, request_id_queue, web_interface.get_last_ping_time)
+    gsm_listener = GsmReceiver(pika_connection_string,command_queue, request_id_queue, dummy_get_heartbeat)
     gsm_listener.start()
-    gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue, web_interface.get_last_ping_time)
+    gsm_talker = GsmTalker(pika_connection_string,gsm_transmit_queue, dummy_get_heartbeat)
     gsm_talker.start()
-
-    # To drone sniffer
-    sniff_to_drone = MavlinkListener(to_drone_sniff_port,baud=57600)
-    sniff_to_drone.start()
-
-    # ConnectionMonitor
-    #connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, sniff_to_drone.get_heartbeat,
-    #                                       gsm_listener.get_heartbeat)
-
-    connection_monitor = ConnectionMonitor(onboard_control.signal_connection_state, dummy_get_heartbeat,
-                                           gsm_listener.get_heartbeat, get_hb_drone_serial2=drone_handler.get_heartbeat)
-
-    connection_monitor.start()
-
 
     # Start the control
     onboard_control.start()
@@ -120,20 +99,15 @@ def main():
     do_exit = False
     while do_exit == False:
         try:
-            time.sleep(0.1)
+            time.sleep(1)
         except KeyboardInterrupt:
             # Ctrl+C was hit - exit program
             do_exit = True
 
-    external_gps_module.stop()
-    gps_monitor.stop()
     onboard_control.stop()
     drone_handler.stop()
     gsm_listener.stop()
     gsm_talker.stop()
-    sniff_to_drone.stop()
-    connection_monitor.stop()
-    web_interface.stop()
     print threading.enumerate()
     logger.info('OES terminated')
 
