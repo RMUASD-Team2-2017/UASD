@@ -50,6 +50,14 @@ enum missionUploadState {
 	UPLOAD_ERROR
 };
 
+enum gsmMissionUploadState {
+	GSM_MISSION_UPLOAD_SUCCESS,
+	GSM_MISSION_UPLOAD_FAILED,
+	GSM_MISSION_UPLOAD_IDLE,
+	GSM_MISSION_UPLOAD_IN_PROGRESS,
+	GSM_MISSION_UPLOAD_ERROR
+};
+
 class GCS_CONTROL_CLASS
 {
 	public:
@@ -80,11 +88,15 @@ class GCS_CONTROL_CLASS
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
 		ros::Subscriber gsm_heartbeat_subscriber;
 		void gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg);
+		ros::Subscriber gsm_mission_upload_result_subscriber;
+		void gsmMissionUploadResultCallback(const std_msgs::Bool::ConstPtr& msg);
+
 
 		ros::Publisher uav_state_publisher;
 		ros::Publisher mission_completed_publisher;
 		ros::Publisher communicationStatusPublisher;
 		ros::Publisher uav_preflight_set_publisher;
+		ros::Publisher gsm_mission_upload_publisher;
 
 		/* Methods */
 
@@ -104,6 +116,7 @@ class GCS_CONTROL_CLASS
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 		double battery_voltage = 0;
 		bool gsm_heartbeat_status = 0;
+		gsmMissionUploadState gsm_mission_upload_state = GSM_MISSION_UPLOAD_IDLE;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -151,11 +164,14 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
 	gsm_heartbeat_subscriber = nh.subscribe<std_msgs::Bool>("/gsm_listener/heartbeat",1,&GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback, this);
+	gsm_mission_upload_result_subscriber = nh.subscribe<std_msgs::Bool>("/gsm_listener/mission_upload_result",1,&GCS_CONTROL_CLASS::gsmMissionUploadResultCallback, this);
 
 	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
 	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
 	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
 	uav_preflight_set_publisher = nh.advertise<gcs::setPreflightData>("/web_interface/listen/set_preflight_data",1);
+	gsm_mission_upload_publisher = nh.advertise<gcs::path>("/gsm_talker/mission_upload",1);
+
 	std_msgs::String msg;
 	msg.data = "idle";
 	uav_state_publisher.publish(msg);
@@ -213,8 +229,33 @@ void GCS_CONTROL_CLASS::run()
 
 				if( mission_upload_state == PATH_RECEIVED )
 				{
-					ROS_INFO("[gcs_control] Trying to upload");
-					gcs::uploadMission mission_upload_msg;
+					switch (gsm_mission_upload_state)
+						case GSM_MISSION_UPLOAD_IDLE:
+							gsm_mission_upload_publisher.publish(planned_path);
+							gsm_mission_upload_state = GSM_MISSION_UPLOAD_IN_PROGRESS;
+							ROS_INFO("[gcs_control] Mission published to gsm_talker");
+							break;
+						case GSM_MISSION_UPLOAD_IN_PROGRESS:
+							break;
+						case GSM_MISSION_UPLOAD_SUCCESS:
+							mission_upload_state = UPLOAD_SUCCESS;
+							break;
+						case GSM_MISSION_UPLOAD_FAILED:
+							ROS_INFO('[gcs_control] Failed to upload mission on gsm');
+							if(gsm_mission_upload_attempts < 10) {
+								ROS_INFO('[gcs_control] Will retry');
+								gsm_mission_upload_state = GSM_MISSION_UPLOAD_IDLE;
+							}
+							else
+							{
+								ROS_INFO('[gcs_control] Not able to upload mission on gsm!');
+								gsm_mission_upload_state = GSM_MISSION_UPLOAD_ERROR
+							}
+						case GSM_MISSION_UPLOAD_ERROR:
+							break;
+
+
+					/*gcs::uploadMission mission_upload_msg;
 					mission_upload_msg.request.waypoints = planned_path;
 					if( upload_mission_service_client.call(mission_upload_msg) && mission_upload_msg.response.result == SUCCESS )
 					{
@@ -225,7 +266,8 @@ void GCS_CONTROL_CLASS::run()
 					{
 						mission_upload_state = UPLOAD_ERROR;
 						ROS_ERROR("[gcs_control] Failed to upload mission");
-					}
+					}*/
+
 				}
 				// if weather ok, open docking station
 				if(mission_upload_state == UPLOAD_SUCCESS ) // and weather ok
@@ -386,6 +428,14 @@ void GCS_CONTROL_CLASS::dockDataSubscriberCallback(const gcs::dockData::ConstPtr
 void GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg)
 {
 	gsm_heartbeat_status = msg->data;
+}
+
+void GCS_CONTROL_CLASS::gsmMissionUploadResultCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+	if( msg->data == true)
+		gsm_mission_upload_state = GSM_MISSION_UPLOAD_SUCCESS;
+	else
+		gsm_mission_upload_state = GSM_MISSION_UPLOAD_FAILED;
 }
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
