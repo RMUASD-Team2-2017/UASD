@@ -57,6 +57,7 @@ class GsmListener(StoppableThread):
             method, properties, body = message
             self.channel.basic_ack(method.delivery_tag)
             decoded = json.loads(body)
+            print decoded
             if decoded['type'] == 'HEARTBEAT':
                 #print 'Received Heartbeat:',decoded['connectionState'],decoded['gpsState']
                 with self.heartbeat_lock:
@@ -85,7 +86,7 @@ class GsmListener(StoppableThread):
 
 
 def main():
-    rospy.init_node('gsm_talker')
+    rospy.init_node('gsm_listener')
     rospy.loginfo('Started')
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsmListener = GsmListener(pika_connection_string)
