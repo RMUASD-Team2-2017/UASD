@@ -30,7 +30,7 @@ class GpsMonitor(StoppableThread):
     STATE_MISMATCH = 'GPS_MISMATCH'
     STATE_NO_FIX_YET = 'GPS_NO_FIX_YET'
     STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH'
-    STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH_CRITICAL'
+    STATE_GEOFENCE_BREACH_CRITICAL = 'GPS_GEOFENCE_BREACH_CRITICAL'
 
 
     TIMEOUT_VALUE = 2
@@ -70,6 +70,7 @@ class GpsMonitor(StoppableThread):
                external_pos['timestamp'] == None \
                or internal_pos['timestamp'] == None:
                 self.signal(GpsMonitor.STATE_NO_FIX_YET)
+                logger.info(' STATE_NO_FIX_YET')
                 time.sleep(float(1) / float(self.rate))
                 continue
             #print json.dumps(external_pos)
@@ -83,9 +84,11 @@ class GpsMonitor(StoppableThread):
                 source = self.find_source(GpsMonitor.STATE_LOST,external_state,internal_state)
                 # If necessary check for source here and send a GpsMonitor.STATE_LOST_BOTH if deemed necessary
                 self.signal(GpsMonitor.STATE_LOST,source)
+                logger.info(' STATE_LOST')
             elif external_state == GpsMonitor.STATE_TIMEOUT or internal_state == GpsMonitor.STATE_TIMEOUT:
                 source = self.find_source(GpsMonitor.STATE_TIMEOUT,external_state,internal_state)
                 self.signal(GpsMonitor.STATE_TIMEOUT, source)
+                logger.info(' STATE_TIMEOUT')
             else:
                 # Check for mismatch
                 external_pos_utm = utm.from_latlon(external_pos['position']['lat'], external_pos['position']['lng'])
@@ -97,16 +100,20 @@ class GpsMonitor(StoppableThread):
                 if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE + time_diff*GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_DELAY and \
                     dist <= GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_MAX:
                     if not self.geofence is None:
-                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['position']['alt'])):
+                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['alt'])):
                             self.signal(GpsMonitor.STATE_OK)
+                            logger.info(' STATE_OK')
                         else:
                             distance_to_fence = self.geofence.distance_to_fence((internal_pos_utm[0],internal_pos_utm[1]))
                             if distance_to_fence < GpsMonitor.TERMINATE_DISTANCE:
                                 self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)
+                                logger.info(' STATE_GEOFENCE_BREACH')
                             else:
                                 self.signal(GpsMonitor.STATE_GEOFENCE_BREACH_CRITICAL)
+                                logger.info(' STATE_GEOFENCE_BREACH_CRITICAL')
                 else:
                     self.signal(GpsMonitor.STATE_MISMATCH)
+                    logger.info(' STATE_MISMATCH')
 
             # Sleep to obtain desired frequency
             time.sleep(float(1)/float(self.rate))
@@ -162,7 +169,7 @@ class Geofence:
         return points
 
     def distance_to_fence(self, test_point):
-        print self.polygon
+       # print self.polygon
         return self.polygon.distance(Point(test_point[0],test_point[1]))
 
     def is_point_legal(self, point3d):

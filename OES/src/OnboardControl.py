@@ -98,6 +98,8 @@ class OnboardControl(StoppableThread):
 
     def run(self):
         logger.info('OnboardControl started')
+        time.sleep(15)
+        logger.info('OnboardControl ready')
         while self.stop_event.is_set() is False:
 
             # Update heartbeat - DEPRECATED, checked by connection_monitor
@@ -118,10 +120,18 @@ class OnboardControl(StoppableThread):
                 elif msg['type'] == 'ACTION_PAUSE_LANDING':
                     self.land_here_paused = True
                     self.drone_handler.loiter()
+                    logger.info('GSM_COMMAND: Pause landing')
                 elif msg['type'] == 'ACTION_NEURAL':
+                    logger.info('GSM_COMMAND: Resume landing')
                     if self.land_here_paused:
                         self.land_here_paused = False
                         self.drone_handler.land_at_current_location()
+                elif msg['type'] == 'MISSION':
+                    #Upload the mission to the FC
+                    result = {'type': 'MISSION_UPLOAD_STATUS', 'value': False}
+                    if self.drone_handler.upload_mission(msg):
+                        result['value'] = True
+                    self.gsm_transmit_queue.put(result)
 
             # Publish states to the gsm node
             if self.connection_state:
@@ -134,8 +144,8 @@ class OnboardControl(StoppableThread):
 
             # We should never override manual mode
             mode = self.drone_handler.get_mode()
-            if mode == DroneHandler.MANUAL_MODE or mode == None or state == DroneHandler:
-                logger.debug("NO ONBOARD CONTROL: Manual mode or no mode yet")
+            if mode == DroneHandler.MANUAL_MODE or mode == None:
+                logger.info("NO ONBOARD CONTROL: Manual mode or no mode yet")
                 # Sleep to obtain desired rate
                 time.sleep(1.0 / self.rate)
                 # Skip the rest of the loop and start over
@@ -151,7 +161,7 @@ class OnboardControl(StoppableThread):
                 return_to_launch = self.check_states(self.action_list_return_to_launch)
                 wait_here = self.check_states(self.action_list_wait_here)
                 self.ready = terminate and land_here and return_to_launch and wait_here # This should be captured and sent by the gsm thread on request
-                logger.debug("NO ONBOARD CONTROL: Idle or Landed state")
+                logger.info("NO ONBOARD CONTROL: Idle or Landed state")
                 time.sleep(1.0 / self.rate)
                 continue
 

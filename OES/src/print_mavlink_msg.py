@@ -1,6 +1,6 @@
 from pymavlink import mavutil
 
-interface = mavutil.mavlink_connection("/dev/ttyUSB0", baud=57600, autoreconnect=True)
+interface = mavutil.mavlink_connection("/dev/serial0", baud=57600, autoreconnect=True)
 
 while True:
     m = interface.recv_msg()
@@ -8,4 +8,4 @@ while True:
         print m
         if (m.get_type() == 'HEARTBEAT'):
             pass
-
+            print 'HEARTBEAT'

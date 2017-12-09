@@ -1,5 +1,6 @@
 <?php
     if ($_GET['id'] != '') {
+        $developer_mode = 1;
         // Require DB config
         require('config.php');
         // Connect to database
@@ -85,9 +86,12 @@
         if ($request_completed == 0 && $request_stopped == 0) {
             if ($request_approved != 0 && $request_approved != 2) {
                 echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #FF0000;">Request awaiting completion</span></p>';
-                echo '<p style="margin-bottom: 20px;">';
-                echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #c0edc0; border-radius: 6px;">COMPLETE</span></a>';
-                echo '</p>';
+                if ( $developer_mode == 1) {
+                    echo '<p style="margin-bottom: 20px;">';
+                    echo '<a href="https://www.techgen.dk/AED/admin/disapprove_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FFFF00; border-radius: 6px;">DISAPPROVE</span></a>';
+                    echo '<a href="https://www.techgen.dk/AED/admin/complete_request.php?id='. $request_id . '&page=show_request.php' .'" class="button_style confirmation"><span style="padding:5px; margin-left: 25px; border: 1px dashed #CCCCCC; background-color: #FFFF00; border-radius: 6px;">COMPLETE</span></a>';
+                    echo '</p>';
+                }
             }
         } elseif ($request_stopped == 0) {
             echo '<p><span style="padding:5px; border: 1px solid #CCCCCC; background-color: #90EE90;">Request completed at <b>'.date('Y-m-d H:i:s', strtotime($request_completed)).'</b></span></p>';
