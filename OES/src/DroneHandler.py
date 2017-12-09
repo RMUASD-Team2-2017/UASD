@@ -154,7 +154,6 @@ class DroneHandler_pymavlink(StoppableThread):
         self.position_lock = threading.Lock()
         self.mode_lock = threading.Lock()
         self.state_lock = threading.Lock()
-        self.waypoints_lock = threading.Lock()
 
         self.mav_interface = None
         self.mode = None
@@ -168,8 +167,6 @@ class DroneHandler_pymavlink(StoppableThread):
         self.state = DroneHandler_pymavlink.STATE_IDLE
         self.hi_control = io()
         self.idle_output_counter = 0
-        self.waypoints = mavwp.MAVWPLoader()
-        self.waypoint_acks = []
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -220,14 +217,6 @@ class DroneHandler_pymavlink(StoppableThread):
 
                 if m.get_type() == 'MISSION_COUNT':
                     self.number_of_waypoints = m.count
-
-                if m.get_type() == 'MISSION_REQUEST':
-                    #Transmit requested waypoint
-                    print m
-                    with self.waypoints_lock:
-                        self.mav_interface.mav.send(self.waypoints.wp(m.seq))
-                if m.get_type() == 'MISSION_ACK':
-                    print m
 
                 # Update completion state - only relevant when we have got new information
                 self.completion_statemachine()
@@ -312,36 +301,6 @@ class DroneHandler_pymavlink(StoppableThread):
         with self.state_lock:
             return self.state
 
-    def upload_mission(self,mission):
-
-        with self.waypoints_lock:
-            # Based on https://gist.github.com/donghee/8d8377ba51aa11721dcaa7c811644169
-            waypoints = [
-                (37.5090904347, 127.045094298),
-                (37.509070898, 127.048905867),
-                (37.5063678607, 127.048960654),
-                (37.5061713129, 127.044741936),
-                (37.5078823794, 127.046914506)
-            ]
-            for waypoint in enumerate(waypoints):
-                frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
-                seq = 0
-                lat, lon = waypoint[0]
-                altitude = 15
-                autocontinue = 1
-                current = 0
-                if seq == 0: # first waypoint to takeoff
-                    current = 1
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
-                elif seq == len(waypoints) - 1: # last waypoint to land
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_LAND, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
-                else:
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
-                self.waypoints.add(p)
-                self.waypoint_acks.append(False)
-            self.mav_interface.waypoint_clear_all_send()
-            self.mav_interface.waypoint_count_send(self.waypoints.count())
-
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -378,26 +337,5 @@ def main_pymavlink():
             do_exit = True
     drone_handler.stop()
 
-def test_mission_upload():
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
-    logger.info('Started')
-    drone_handler_signal_queue = Queue()
-    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540', drone_handler_signal_queue, baud=57600)
-    drone_handler.start()
-
-    mission = 0
-    drone_handler.upload_mission(mission)
-
-    do_exit = False
-    while do_exit == False:
-        try:
-            time.sleep(1)
-
-        except KeyboardInterrupt:
-            # Ctrl+C was hit - exit program
-            do_exit = True
-    drone_handler.stop()
-
 if __name__ == "__main__":
-    test_mission_upload()
+    main_pymavlink()

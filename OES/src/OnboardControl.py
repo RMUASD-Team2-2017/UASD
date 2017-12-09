@@ -126,12 +126,6 @@ class OnboardControl(StoppableThread):
                     if self.land_here_paused:
                         self.land_here_paused = False
                         self.drone_handler.land_at_current_location()
-                elif msg['type'] == 'MISSION':
-                    #Upload the mission to the FC
-                    result = {'type': 'MISSION_UPLOAD_STATUS', 'value': False}
-                    if self.drone_handler.upload_mission(msg):
-                        result['value'] = True
-                    self.gsm_transmit_queue.put(result)
 
             # Publish states to the gsm node
             if self.connection_state:
