@@ -4,7 +4,10 @@ import logging
 from Queue import Queue
 from dronekit import connect, VehicleMode, Command, LocationGlobal
 from pymavlink import mavutil, mavwp
-from RPiGpio import io
+
+ON_PI = False
+if ON_PI:
+    from RPiGpio import io
 
 forever = 60*60*24*365*100
 
@@ -146,9 +149,10 @@ class DroneHandler_pymavlink(StoppableThread):
     STATE_LANDING = 3
     STATE_LANDED = 4
 
-    def __init__(self,port, signal_queue, baud=None):
+    def __init__(self,port, signal_queue, gsm_transmit_queue, baud=None):
         StoppableThread.__init__(self)
         self.signal = signal_queue
+        self.gsm_transmit_queue = gsm_transmit_queue
         self.heartbeat = None
         self.heartbeat_lock = threading.Lock()
         self.position_lock = threading.Lock()
@@ -166,10 +170,10 @@ class DroneHandler_pymavlink(StoppableThread):
         self.number_of_waypoints = None
         self.request_mission_list_sent = False
         self.state = DroneHandler_pymavlink.STATE_IDLE
-        self.hi_control = io()
+        if ON_PI:
+            self.hi_control = io()
         self.idle_output_counter = 0
         self.waypoints = mavwp.MAVWPLoader()
-        self.waypoint_acks = []
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -183,8 +187,8 @@ class DroneHandler_pymavlink(StoppableThread):
 
             # Receive messages
             m = self.mav_interface.recv_msg()
-#            print m
             if m:
+                #print m
                 if m.get_type() == 'HEARTBEAT':
                     with self.heartbeat_lock:
                         self.heartbeat = time.time()
@@ -225,9 +229,14 @@ class DroneHandler_pymavlink(StoppableThread):
                     #Transmit requested waypoint
                     print m
                     with self.waypoints_lock:
+                        print self.waypoints.wp(m.seq)
                         self.mav_interface.mav.send(self.waypoints.wp(m.seq))
                 if m.get_type() == 'MISSION_ACK':
                     print m
+                    msg = {'type': 'MISSION_RESULT', 'value': False}
+                    if m.type == 0:
+                        msg['value'] = True
+                    self.gsm_transmit_queue.put(msg)
 
                 # Update completion state - only relevant when we have got new information
                 self.completion_statemachine()
@@ -237,30 +246,35 @@ class DroneHandler_pymavlink(StoppableThread):
     def completion_statemachine(self):
         with self.state_lock:
             if self.state is DroneHandler_pymavlink.STATE_IDLE:
-                self.hi_control.hi_safe()
+                if ON_PI:
+                    self.hi_control.hi_safe()
                 self.idle_output_counter += 1
                 if  self.idle_output_counter == 100:
                     logger.info('State: Idle')
                     self.idle_output_counter = 0
                 if self.armed is True:
                     self.state = DroneHandler_pymavlink.STATE_TAKEOFF
-                    self.hi_control.hi_landing_siren()
+                    if ON_PI:
+                        self.hi_control.hi_landing_siren()
                     logger.info('State: Takeoff')
                     self.request_mission_list() # Request number of waypoints. Gives a timeout because we never request the waypoints
             elif self.state is DroneHandler_pymavlink.STATE_TAKEOFF:
                 if self.current_waypoint > 0:
                     self.state = DroneHandler_pymavlink.STATE_ENROUTE
-                    self.hi_control.hi_flash_rotation_indicators_siren()
+                    if ON_PI:
+                        self.hi_control.hi_flash_rotation_indicators_siren()
                     logger.info('State: Enroute')
             elif self.state is DroneHandler_pymavlink.STATE_ENROUTE:
                 if self.current_waypoint == self.number_of_waypoints-1:
                     self.state = DroneHandler_pymavlink.STATE_LANDING
-                    self.hi_control.hi_landing_siren()
+                    if ON_PI:
+                        self.hi_control.hi_landing_siren()
                     logger.info('State: Landing')
             elif self.state is DroneHandler_pymavlink.STATE_LANDING:
                 if self.armed is False:
                     self.state = DroneHandler_pymavlink.STATE_LANDED
-                    self.hi_control.hi_safe()
+                    if ON_PI:
+                        self.hi_control.hi_safe()
                     logger.info('State: Landed')
             elif self.state is DroneHandler_pymavlink.STATE_LANDED:
                 pass
@@ -316,30 +330,40 @@ class DroneHandler_pymavlink(StoppableThread):
 
         with self.waypoints_lock:
             # Based on https://gist.github.com/donghee/8d8377ba51aa11721dcaa7c811644169
+            logger.info('Upload mission')
             waypoints = [
-                (37.5090904347, 127.045094298),
-                (37.509070898, 127.048905867),
-                (37.5063678607, 127.048960654),
-                (37.5061713129, 127.044741936),
-                (37.5078823794, 127.046914506)
+                (47.3977418, 8.5455938),
+                (47.3978, 8.5456),
+                (47.3977418, 8.5455938)
             ]
+            NAV_WAYPOINT = 16
+            NAV_LAND = 21
+            NAV_TAKEOFF = 22
             for waypoint in enumerate(waypoints):
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
-                seq = 0
-                lat, lon = waypoint[0]
+                seq = waypoint[0]
+                lat, lon = waypoint[1]
                 altitude = 15
                 autocontinue = 1
                 current = 0
                 if seq == 0: # first waypoint to takeoff
                     current = 1
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
+                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_TAKEOFF, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
                 elif seq == len(waypoints) - 1: # last waypoint to land
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_LAND, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
+                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_LAND, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
                 else:
-                    p = mavutil.mavlink.MAVLink_mission_item_message(self.mav_interface.target_system, self.mav_interface.target_component, seq, frame, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
+                    p = mavutil.mavlink.MAVLink_mission_item_message(1, 1, seq, frame, NAV_WAYPOINT, current, autocontinue, 0, 0, 0, 0, lat, lon, altitude)
                 self.waypoints.add(p)
-                self.waypoint_acks.append(False)
+                i = 0
+            for i in range(0, 5):
+                print self.waypoints.wp(i)
+                i += i
+
+            # Clear current waypoints
             self.mav_interface.waypoint_clear_all_send()
+            # Allow the flight controller to receive it
+            time.sleep(1)
+            #Published the number of waypoints
             self.mav_interface.waypoint_count_send(self.waypoints.count())
 
 
@@ -383,15 +407,18 @@ def test_mission_upload():
     logger = logging.getLogger(__name__)
     logger.info('Started')
     drone_handler_signal_queue = Queue()
-    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540', drone_handler_signal_queue, baud=57600)
+    gsm_transmit_queue = Queue()
+    drone_handler = DroneHandler_pymavlink('127.0.0.1:14540', drone_handler_signal_queue, gsm_transmit_queue, baud=57600)
     drone_handler.start()
 
     mission = 0
-    drone_handler.upload_mission(mission)
+    print 'Upload succes:', drone_handler.upload_mission(mission)
 
     do_exit = False
     while do_exit == False:
         try:
+            if not gsm_transmit_queue.empty():
+                print gsm_transmit_queue.get()
             time.sleep(1)
 
         except KeyboardInterrupt:
