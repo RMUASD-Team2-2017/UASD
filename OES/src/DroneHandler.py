@@ -388,7 +388,7 @@ def test_mission_upload():
 
     mission = 0
     drone_handler.upload_mission(mission)
-    
+
     do_exit = False
     while do_exit == False:
         try:
