@@ -3,6 +3,11 @@
         // Require DB config
         require('config.php');
 
+
+        $file = 'admin/db.log';
+        // Open the file to get existing content
+        $current = file_get_contents($file);
+
         //--------------------------------------------------------------------------
         // 1) Connect to mysql database
         //--------------------------------------------------------------------------
@@ -36,8 +41,17 @@
 
         if ($GPS_timestamp == $request_id) {
             // Check if it is completely new information / a new request
-            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`, `approved`, `stopped`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '', '0', '0');";
+            $sql = "SELECT * FROM `AED_requests` WHERE  `request_id` =$request_id_md5 ORDER BY  `int_id` DESC";
             $result = mysqli_query($con, $sql);          //query
+            if (mysqli_num_rows($result) == 0) {
+                $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`, `approved`, `stopped`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '', '0', '0');";
+                $result = mysqli_query($con, $sql);          //query
+            } else {
+                // Append to file
+                $current .= "ERROR CAUGHT: "."request_id:".$request_id_md5.",GPS_timestamp:".$GPS_timestamp.",first_GPS_timestamp:".$request_id.",time:".$time.",ip:".$ip.",browser:".$browser."\n";
+                // Write the contents back to the file
+                file_put_contents($file, $current);
+            }
         } else {
             // See if a drone has been dispatched
             $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
