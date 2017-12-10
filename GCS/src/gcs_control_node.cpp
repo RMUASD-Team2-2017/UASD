@@ -13,7 +13,7 @@
 #include "gcs/preFlight.h"
 #include "gcs/communicationStatus.h"
 #include "gcs/setPreflightData.h"
-
+#include "gcs/toDroneData.h"
 
 #include "sensor_msgs/NavSatFix.h"
 
@@ -80,14 +80,17 @@ class GCS_CONTROL_CLASS
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
 		ros::Subscriber gsm_heartbeat_subscriber;
 		void gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg);
+		ros::Subscriber comm_status_subscriber;
+		void commStatusSubscriberCallback(const gcs::communicationStatus::ConstPtr& msg);
 
 		ros::Publisher uav_state_publisher;
 		ros::Publisher mission_completed_publisher;
-		ros::Publisher communicationStatusPublisher;
+		//ros::Publisher communicationStatusPublisher;
 		ros::Publisher uav_preflight_set_publisher;
+		ros::Publisher to_drone_publisher;
 
 		/* Methods */
-
+		void land();
 
 		/* Attributes */
 		gcsState state = IDLE;
@@ -103,7 +106,7 @@ class GCS_CONTROL_CLASS
 		std::vector<double> dock_voltage = {0, 0, 0, 0};
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 		double battery_voltage = 0;
-		bool gsm_heartbeat_status = 0;
+		bool gsm_heartbeat_status = 0, plnk_status = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -151,11 +154,14 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
 	gsm_heartbeat_subscriber = nh.subscribe<std_msgs::Bool>("/gsm_listener/heartbeat",1,&GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback, this);
+	comm_status_subscriber = nh.subscribe<gcs::communicationStatus>("/drone_communication/communicationStatus", 1, &GCS_CONTROL_CLASS::commStatusSubscriberCallback, this);
 
 	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
 	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
-	communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
+	//communicationStatusPublisher = nh.advertise<gcs::communicationStatus>("/drone_communication/communiationStatus",1);
 	uav_preflight_set_publisher = nh.advertise<gcs::setPreflightData>("/web_interface/listen/set_preflight_data",1);
+	to_drone_publisher = nh.advertise<gcs::toDroneData>("/gsm_talker/toDrone",1);
+	
 	std_msgs::String msg;
 	msg.data = "idle";
 	uav_state_publisher.publish(msg);
@@ -168,6 +174,11 @@ void GCS_CONTROL_CLASS::run()
 	{
 		case IDLE:
 			{
+				gcs::toDroneData to_drone_msg;
+				to_drone_msg.type = "COMMAND";
+				to_drone_msg.value = 1;
+				to_drone_publisher.publish(to_drone_msg);
+				
 				if ( dock_temperature > 35 ||
 					 dock_temperature< 15 )
 				{
@@ -314,10 +325,10 @@ void GCS_CONTROL_CLASS::run()
 					std_msgs::Bool complete_msg;
 					mission_completed_publisher.publish(complete_msg);
 				}
-				// Monitor during flight
-				if(!gsm_heartbeat_status) 
+				// Monitor GSM link (SLNK)
+				if(!gsm_heartbeat_status) // This will only turn false after timing out
 				{
-					ROS_ERROR("[gcs_control] GSM HEARTBEAT LOST. LANDING AT CURRENT LOCATION.");
+					ROS_ERROR("[gcs_control] GSM HEARTBEAT LOST. LANDING.");
 					// Issue land command
 					gcs::land land_msg;
 					if( land_service_client.call(land_msg) && land_msg.response.result == SUCCESS)
@@ -326,6 +337,16 @@ void GCS_CONTROL_CLASS::run()
 						state = ARRIVED;
 					}
 					else ROS_ERROR("[gcs_control] EMERGENCY LANDING COMMAND FAILED.");
+				}
+				// Monitor telemetry (PLNK)
+				if (!plnk_status) // This will only turn false after timing out
+				{
+					ROS_ERROR("[gcs_control] PLNK CONNECTION LOST. LANDING.");
+					// Issue land command
+					gcs::toDroneData to_drone_msg;
+					to_drone_msg.type = "COMMAND";
+					to_drone_msg.value = 1;
+					to_drone_publisher.publish(to_drone_msg);
 				}
 			}
 			break;
@@ -387,6 +408,22 @@ void GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback(const std_msgs::Bool::Con
 {
 	gsm_heartbeat_status = msg->data;
 }
+
+void GCS_CONTROL_CLASS::commStatusSubscriberCallback(const gcs::communicationStatus::ConstPtr& msg)
+{
+	plnk_status = msg->connected;
+}
+/*
+void GCS_CONTROL_CLASS::land()
+{
+	gcs::land land_msg;
+	if( land_service_client.call(land_msg) && land_msg.response.result == SUCCESS)
+	{
+		ROS_INFO("[gcs_control] Emergency landing command successful.");
+		state = ARRIVED;
+	}
+	else ROS_ERROR("[gcs_control] EMERGENCY LANDING COMMAND FAILED.");
+}//*/
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()
 {}
