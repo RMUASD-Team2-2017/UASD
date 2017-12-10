@@ -10,7 +10,7 @@
     <body>
         <div class="centerDiv">
             <center><a href="../">Request AED</a> - <a href="show_drones.php">Drones</a> - <a href="show_requests.php">Requests</a> - <b><i>Request AED (backend)</i></b> - <a href="db.log"><i>Database exception log</i></a></center>
-            <center><h1>UASD Location Pick Test</h1></center>
+            <center><h1>Request AED (backend)</h1></center>
 
             <h2>Choose location:</h2>
             <button onclick="changeLocation(1)">HCA Airport</button>
