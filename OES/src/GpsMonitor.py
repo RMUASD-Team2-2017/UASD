@@ -33,8 +33,8 @@ class GpsMonitor(StoppableThread):
     STATE_GEOFENCE_BREACH_CRITICAL = 'GPS_GEOFENCE_BREACH_CRITICAL'
 
 
-    TIMEOUT_VALUE = 2
-    LOST_TIME_VALUE = 5
+    TIMEOUT_VALUE = 5
+    LOST_TIME_VALUE = 15
     MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 25 # We don't fail if the deviation between the positions is below
     MISMATCH_DEVIATION_ACCEPTANCE_DELAY = 15  # 15 extra meters pr second (based on 15 m/s speed)
     MISMATCH_DEVIATION_ACCEPTANCE_MAX = 75  # Max difference no matter fix time
@@ -120,6 +120,7 @@ class GpsMonitor(StoppableThread):
         logger.info('Terminating')
 
     def check_timestamp(self, position):
+        return GpsMonitor.STATE_OK
         current_time = time.time()
         if current_time - float(position['timestamp']) > float(GpsMonitor.LOST_TIME_VALUE):
             return GpsMonitor.STATE_LOST
