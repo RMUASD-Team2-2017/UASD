@@ -5,7 +5,7 @@ from Queue import Queue
 from dronekit import connect, VehicleMode, Command, LocationGlobal
 from pymavlink import mavutil, mavwp
 
-ON_PI = False
+ON_PI = True
 if ON_PI:
     from RPiGpio import io
 
@@ -172,11 +172,9 @@ class DroneHandler_pymavlink(StoppableThread):
         if ON_PI:
             self.hi_control = io()
         self.idle_output_counter = 0
-<<<<<<< HEAD
         self.waypoints = mavwp.MAVWPLoader()
         self.clearing_waypoints = threading.Event()
-=======
->>>>>>> devel
+
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -228,7 +226,6 @@ class DroneHandler_pymavlink(StoppableThread):
                 if m.get_type() == 'MISSION_COUNT':
                     self.number_of_waypoints = m.count
 
-<<<<<<< HEAD
                 if m.get_type() == 'MISSION_REQUEST':
                     #Transmit requested waypoint
                     print m
@@ -249,8 +246,6 @@ class DroneHandler_pymavlink(StoppableThread):
                         print msg
                         self.gsm_transmit_queue.put(msg)
 
-=======
->>>>>>> devel
                 # Update completion state - only relevant when we have got new information
                 self.completion_statemachine()
             # Avoid busy loop
