@@ -345,7 +345,7 @@ class DroneHandler_pymavlink(StoppableThread):
 
         # Mission constants
         HOLD_TIME = 0.0
-        ACCEPTANCE_RADIUS = 1.0
+        ACCEPTANCE_RADIUS = 5.0
 
 
         with self.waypoints_lock:
