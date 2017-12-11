@@ -344,9 +344,10 @@ void GCS_CONTROL_CLASS::run()
 					ROS_ERROR("[gcs_control] PLNK CONNECTION LOST. LANDING.");
 					// Issue land command
 					gcs::toDroneData to_drone_msg;
-					to_drone_msg.type = "COMMAND";
+					to_drone_msg.type = "ACTION_LAND_HERE";
 					to_drone_msg.value = 1;
 					to_drone_publisher.publish(to_drone_msg);
+					state = ARRIVED;
 				}
 			}
 			break;
