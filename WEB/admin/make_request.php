@@ -27,6 +27,7 @@
                 Altitude accuracy: <input type="text" id="alt_precision" value="0">m
             </p>
             <button onclick="sendRequest()" id="sendReq" disabled>SEND REQUEST</button>
+            <p id="sendStatus" style="color:gray;"></p>
 
             <br>
             <br>
