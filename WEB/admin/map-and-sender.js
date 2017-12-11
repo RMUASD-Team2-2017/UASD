@@ -11,7 +11,7 @@ var LatLng_HCAGolf;
 
 var LatHolder = document.getElementById("lat");
 var LngHolder = document.getElementById("lng");
-
+var statusHolder = document.getElementById('sendStatus');
 
 // Map initializer, callback from the Google Map API
 function myMap() {
@@ -100,6 +100,8 @@ function sendRequest() {
     console.log("alt precision:"+document.getElementById('alt_precision').value);
     console.log(Date.now());
 
+    statusHolder.innerHTML = "<i>sending</i>";
+
     $.ajax({
         url: "../add_smartphone_request.php",
         type: "POST",
@@ -114,10 +116,16 @@ function sendRequest() {
             first_GPS_timestamp: Date.now()},
         success: function(msg) {
             console.log("Response received!");
+            statusHolder.innerHTML = "<i>succes</i>";
+            setTimeout(function(){ clearStatusHolder(); }, 1000); // run the getLocaiton method again after 1s
             var rxArray = JSON.parse(JSON.stringify(msg));
         },
         error: function(jqXHR, textStatus, errorThrown) {
            console.log(textStatus, errorThrown);
         }
     });
+}
+
+function clearStatusHolder() {
+    statusHolder.innerHTML = "";
 }
