@@ -22,7 +22,7 @@
 #define DEBUG false
 #define lat_index 2
 #define lon_index 3
-#define STEP_SIZE 10.0//0.01
+#define STEP_SIZE 0.01//0.01
 #define USE_UTM true
 #define TEST_ACCURACY 0.1
 
