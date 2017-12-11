@@ -121,7 +121,7 @@ private:
 	int last_waypoint = 0;
 	int number_of_waypoints = 0;
 	bool deploy = false;
-	bool missionReceived = false;
+	bool missionReceived = true;
 	bool missionCleared = false;
 	bool NAV_DLL_ACT_set = false;
 	bool speed_set = false;
@@ -776,6 +776,7 @@ bool DRONE_COMM_CLASS::setup()
 
 	}*/
 	return (missionCleared);// && NAV_DLL_ACT_set && speed_set && speed2_set && curDroneStatus.state.connected);
+
 }
 
 bool DRONE_COMM_CLASS::arm()

@@ -4,7 +4,10 @@ from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
 d = generate_distutils_setup(
-  scripts=['src/pre_flight_node.py', 'src/web_interface_node.py', 'src/gsm_talker.py'],
+    ##  don't do this unless you want a globally visible script
+    # scripts=['bin/myscript'], 
+    packages=['sensor_msgs'],
+    package_dir={'': 'src'}
 )
 
 setup(**d)

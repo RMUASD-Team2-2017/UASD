@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
   mavros_msgs
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -164,7 +165,10 @@ include_directories(
 add_executable(gcs_control_node src/gcs_control_node.cpp)
 add_executable(docking_station_node src/docking_station_node.cpp)
 add_executable(drone_communication_node src/drone_communication_node.cpp)
-add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp)
+#add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp)
+add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp src/path_planner.cpp)
+#add_executable(path_planner_node src/path_planner_node.cpp src/geofence.cpp src/path_planner.cpp)
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

@@ -238,7 +238,7 @@ void GCS_CONTROL_CLASS::run()
 						case GSM_MISSION_UPLOAD_IN_PROGRESS:
 							break;
 						case GSM_MISSION_UPLOAD_SUCCESS:
-							ROS_INFO("[gcs_control] Gsm upload success"
+							ROS_INFO("[gcs_control] Gsm upload success");
 							mission_upload_state = UPLOAD_SUCCESS;
 							break;
 						case GSM_MISSION_UPLOAD_FAILED:
