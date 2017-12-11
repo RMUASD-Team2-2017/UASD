@@ -700,6 +700,7 @@ bool DRONE_COMM_CLASS::setup()
 			ROS_INFO("[drone_comm] Mision cleared");
 		}
 	}
+    /*
 	if(!NAV_DLL_ACT_set)
 	{
 		ROS_INFO("[drone_comm] NAV_DLL_ACT set entered");
@@ -773,8 +774,8 @@ bool DRONE_COMM_CLASS::setup()
 			ROS_INFO("Cruise speed set");
 		}
 
-	}
-	return (missionCleared && NAV_DLL_ACT_set && speed_set && speed2_set && curDroneStatus.state.connected);
+	}*/
+	return (missionCleared);// && NAV_DLL_ACT_set && speed_set && speed2_set && curDroneStatus.state.connected);
 }
 
 bool DRONE_COMM_CLASS::arm()
