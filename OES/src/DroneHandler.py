@@ -158,7 +158,6 @@ class DroneHandler_pymavlink(StoppableThread):
         self.position_lock = threading.Lock()
         self.mode_lock = threading.Lock()
         self.state_lock = threading.Lock()
-        self.waypoints_lock = threading.Lock()
 
         self.mav_interface = None
         self.mode = None
@@ -173,8 +172,11 @@ class DroneHandler_pymavlink(StoppableThread):
         if ON_PI:
             self.hi_control = io()
         self.idle_output_counter = 0
+<<<<<<< HEAD
         self.waypoints = mavwp.MAVWPLoader()
         self.clearing_waypoints = threading.Event()
+=======
+>>>>>>> devel
 
         if baud is None:
             self.mav_interface = mavutil.mavlink_connection(port, autoreconnect=True)
@@ -226,6 +228,7 @@ class DroneHandler_pymavlink(StoppableThread):
                 if m.get_type() == 'MISSION_COUNT':
                     self.number_of_waypoints = m.count
 
+<<<<<<< HEAD
                 if m.get_type() == 'MISSION_REQUEST':
                     #Transmit requested waypoint
                     print m
@@ -246,6 +249,8 @@ class DroneHandler_pymavlink(StoppableThread):
                         print msg
                         self.gsm_transmit_queue.put(msg)
 
+=======
+>>>>>>> devel
                 # Update completion state - only relevant when we have got new information
                 self.completion_statemachine()
             # Avoid busy loop
@@ -432,6 +437,7 @@ def main_pymavlink():
             do_exit = True
     drone_handler.stop()
 
+
 def test_mission_upload():
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
@@ -457,4 +463,4 @@ def test_mission_upload():
     drone_handler.stop()
 
 if __name__ == "__main__":
-    test_mission_upload()
+    main_pymavlink()

@@ -19,7 +19,7 @@
         </head>
     <body>
     <div class="centerDiv">
-    <center><a href="../">Request AED</a> - <a href="show_drones.php">Drones</a> - <b>Requests</b></center>
+    <center><a href="../">Request AED</a> - <a href="show_drones.php">Drones</a> - <b>Requests</b> - <a href="make_request.php"><i>Request AED (backend)</i></a> - <a href="db.log"><i>Database exception log</i></a></center>
     <center><h1>AED Requests</h1></center>';
 
     //echo '<div style="width:50%; float:left;">';

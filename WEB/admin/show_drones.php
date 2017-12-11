@@ -22,7 +22,7 @@
         </head>
     <body>
     <div class="centerDiv">
-    <center><a href="../">Request AED</a> - <b>Drones</b> - <a href="show_requests.php">Requests</a></center>
+    <center><a href="../">Request AED</a> - <b>Drones</b> - <a href="show_requests.php">Requests</a> - <a href="make_request.php"><i>Request AED (backend)</i></a> - <a href="db.log"><i>Database exception log</i></a></center>
     <center><h1>AED UAVs</h1></center>';
 
     echo '<table class="customTableClass">

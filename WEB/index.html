@@ -129,10 +129,11 @@
         }
 
         function showPosition(position) {
-            if (measurements < 19 ) {
-                measurements = measurements + 1;
-                setTimeout(function(){ getLocation(); }, 1000);
-            }
+            // Commented out because a better recording method has been implemented.
+            // if (measurements < 19 ) {
+            //     measurements = measurements + 1;
+            //     setTimeout(function(){ getLocation(); }, 1000);
+            // }
             //ErrorHolder.innerHTML = "Measurement " + measurements;
             //InfoHolder.innerHTML = '<strong>An AED equipped drone is being sent to your location</strong><br /><i>(lat: '+position.coords.latitude+', lng: '+position.coords.longitude+')</i><br /><span style="color:red;">PLEASE STAY ON THE CURRENT WEBPAGE!</span><br /><h3 class="blink_me" style="color:green;"><b>PERFORM CPR UNTIL THE AED ARRIVES</b></h3><p><i>Push straight down on (compress) the chest each time the text blinks</i></p>';
 
@@ -145,6 +146,9 @@
             // Note that the more which is being returned the slower it becomes.
 
             if (lastGPStimestamp != position.timestamp) {
+                if (measurements < 19 ) {
+                    measurements = measurements + 1;
+                }
                 if (firstRun) {
                     firstGPStimestamp = position.timestamp;
                     firstRun=0;
@@ -181,6 +185,9 @@
                     }
                 });
                 lastGPStimestamp = position.timestamp;
+            }
+            if (measurements < 19 ) {
+                setTimeout(function(){ getLocation(); }, 1000); // run the getLocaiton method again after 1s
             }
         }
 
