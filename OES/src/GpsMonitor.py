@@ -56,7 +56,7 @@ class GpsMonitor(StoppableThread):
 
     def run(self):
         logger.info('GpsMonitor started')
-        time.sleep(30) # Allow the gps' to get a fix
+        time.sleep(5) # Allow the gps' to get a fix
         logger.info('GpsMonitor enforced')
         while self.stop_event.is_set() is False:
             external_pos = self.get_external_pos()
