@@ -118,6 +118,7 @@ class OnboardControl(StoppableThread):
                 elif msg['type'] == 'ACTION_RETURN_TO_LAUNCH':
                     self.command_return_to_launch = True
                     logger.info('GSM_COMMAND: Return to launch')
+                '''
                 elif msg['type'] == 'ACTION_PAUSE_LANDING':
                     self.land_here_paused = True
                     self.drone_handler.loiter()
@@ -127,6 +128,7 @@ class OnboardControl(StoppableThread):
                     if self.land_here_paused:
                         self.land_here_paused = False
                         self.drone_handler.land_at_current_location()
+                '''
                 elif msg['type'] == 'MISSION':
                     #Upload the mission to the FC
                     logger.info('Gsm mission upload recieved')
