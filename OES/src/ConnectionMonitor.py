@@ -66,7 +66,7 @@ class ConnectionMonitor(StoppableThread):
 
     def run(self):
         logger.info('Started')
-        time.sleep(30) # Allow the connections to start and connect
+        time.sleep(5) # Allow the connections to start and connect
         logger.info('Enforced')
         while self.stop_event.is_set() is False:
             # Get the heartbeats
