@@ -158,6 +158,7 @@ class DroneHandler_pymavlink(StoppableThread):
         self.position_lock = threading.Lock()
         self.mode_lock = threading.Lock()
         self.state_lock = threading.Lock()
+        self.waypoints_lock = threading.Lock()
 
         self.mav_interface = None
         self.mode = None
