@@ -76,15 +76,15 @@ class ConnectionMonitor(StoppableThread):
             drone_serial2_heartbeat = self.get_heartbeat_drone_serial2()
 
             # Check them
-            to_drone_state = self.check_heartbeat(heartbeat_to_drone, timeout=ConnectionMonitor.PRIMARY_LINK_TIMEOUT, loss=ConnectionMonitor.PRIMARY_LINK_LOSS)
-            gsm_state = self.check_heartbeat(gsm_heartbeat, timeout=ConnectionMonitor.GSM_HEARTBEAT_TIMEOUT, loss=ConnectionMonitor.GSM_HEARTBEAT_LOSS)
+            to_drone_state = self.check_heartbeat(heartbeat_to_drone, timeout=ConnectionMonitor.PRIMARY_LINK_TIMEOUT, lost=ConnectionMonitor.PRIMARY_LINK_LOSS)
+            gsm_state = self.check_heartbeat(gsm_heartbeat, timeout=ConnectionMonitor.GSM_HEARTBEAT_TIMEOUT, lost=ConnectionMonitor.GSM_HEARTBEAT_LOSS)
             # Don't monitor connection to ground. GC is responsible of that.
             # from_drone_state = self.check_heartbeat(heartbeat_from_drone)
 
             # We don't monitor this for now as it is simply a wire connection.
             # The fc will probably be broke if this is not working
             # If we want to monitor it we should signal to GCS such that it can terminate
-            drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat, timeout=ConnectionMonitor.FCU_HEARTBEAT_TIMEOUT, loss=ConnectionMonitor.FCU_HEARTBEAT_LOSS)
+            drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat, timeout=ConnectionMonitor.FCU_HEARTBEAT_TIMEOUT, lost=ConnectionMonitor.FCU_HEARTBEAT_LOSS)
 
             # Cases
             if gsm_state == ConnectionMonitor.STATE_CON_NOT_YET or \
