@@ -50,7 +50,7 @@
 
 // Waypoint definitions - see also mavlink_defines.h in include
 #define HOLD_TIME 				0.0
-#define ACCEPTANCE_RADIUS		1.0
+#define ACCEPTANCE_RADIUS		5.0
 #define SPEED 15.0
 
 #define ROS_TAKEOFF 0
