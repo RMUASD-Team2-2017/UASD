@@ -45,6 +45,13 @@ class ConnectionMonitor(StoppableThread):
     HEARTBEAT_TIMEOUT = 5.0
     HEARTBEAT_LOST = 10.0
 
+    FCU_HEARTBEAT_LOSS = 4.0
+    FCU_HEARTBEAT_TIMEOUT = 2.0
+    GSM_HEARTBEAT_LOSS = 10.0
+    GSM_HEARTBEAT_TIMEOUT = 5.0
+    PRIMARY_LINK_LOSS = 5.0
+    PRIMARY_LINK_TIMEOUT = 2.5
+
     def __init__(self, signal_function, get_hb_to_drone_sniff,
                  get_hb_gsm, get_hb_drone_serial2=None,
                  get_hb_from_drone_sniff=None, rate=1):
@@ -69,15 +76,15 @@ class ConnectionMonitor(StoppableThread):
             drone_serial2_heartbeat = self.get_heartbeat_drone_serial2()
 
             # Check them
-            to_drone_state = self.check_heartbeat(heartbeat_to_drone)
-            gsm_state = self.check_heartbeat(gsm_heartbeat)
+            to_drone_state = self.check_heartbeat(heartbeat_to_drone, timeout=ConnectionMonitor.PRIMARY_LINK_TIMEOUT, loss=ConnectionMonitor.PRIMARY_LINK_LOSS)
+            gsm_state = self.check_heartbeat(gsm_heartbeat, timeout=ConnectionMonitor.GSM_HEARTBEAT_TIMEOUT, loss=ConnectionMonitor.GSM_HEARTBEAT_LOSS)
             # Don't monitor connection to ground. GC is responsible of that.
             # from_drone_state = self.check_heartbeat(heartbeat_from_drone)
 
             # We don't monitor this for now as it is simply a wire connection.
             # The fc will probably be broke if this is not working
             # If we want to monitor it we should signal to GCS such that it can terminate
-            drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat)
+            drone_serial2_state = self.check_heartbeat(drone_serial2_heartbeat, timeout=ConnectionMonitor.FCU_HEARTBEAT_TIMEOUT, loss=ConnectionMonitor.FCU_HEARTBEAT_LOSS)
 
             # Cases
             if gsm_state == ConnectionMonitor.STATE_CON_NOT_YET or \
@@ -129,20 +136,24 @@ class ConnectionMonitor(StoppableThread):
                 logger.warning('Telemetry wrong state')
 
             output = gsm_state + ' ' + to_drone_state + ' ' + drone_serial2_state
-            logger.debug(output)
+            logger.info(output)
 
             # Sleep to obtain desired frequency (rate in Hz)
             time.sleep(float(1) / float(self.rate))
         logger.info('Terminating')
 
-    def check_heartbeat(self,heartbeat):
+    def check_heartbeat(self,heartbeat, timeout=None, lost=None):
+        if not timeout:
+            timeout = ConnectionMonitor.HEARTBEAT_TIMEOUT
+        if not lost:
+            lost = ConnectionMonitor.HEARTBEAT_LOST
         if heartbeat is None:
             return ConnectionMonitor.STATE_CON_NOT_YET
         else:
             current_time = time.time()
-            if current_time - heartbeat < ConnectionMonitor.HEARTBEAT_TIMEOUT:
+            if current_time - heartbeat < timeout:
                 return ConnectionMonitor.STATE_CON_OK
-            elif current_time -heartbeat < ConnectionMonitor.HEARTBEAT_LOST:
+            elif current_time -heartbeat < lost:
                 return ConnectionMonitor.STATE_CON_TIMEOUT
             else:
                 return ConnectionMonitor.STATE_CON_LOST

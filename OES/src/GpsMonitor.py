@@ -3,6 +3,7 @@ import time
 import utm
 import logging
 from math import sqrt
+from shapely.geometry import Polygon, Point
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,17 @@ class GpsMonitor(StoppableThread):
     STATE_MISMATCH = 'GPS_MISMATCH'
     STATE_NO_FIX_YET = 'GPS_NO_FIX_YET'
     STATE_GEOFENCE_BREACH = 'GPS_GEOFENCE_BREACH'
+    STATE_GEOFENCE_BREACH_CRITICAL = 'GPS_GEOFENCE_BREACH_CRITICAL'
 
-    TIMEOUT_VALUE = 3
-    LOST_TIME_VALUE = 10
-    MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 50
+
+    TIMEOUT_VALUE = 2
+    LOST_TIME_VALUE = 5
+    MISMATCH_DISTANCE_ACCEPTANCE_VALUE = 25 # We don't fail if the deviation between the positions is below
+    MISMATCH_DEVIATION_ACCEPTANCE_DELAY = 15  # 15 extra meters pr second (based on 15 m/s speed)
+    MISMATCH_DEVIATION_ACCEPTANCE_MAX = 75  # Max difference no matter fix time
+
+    TERMINATE_DISTANCE = 50
+
 
     def __init__(self, signal_function, get_external_pos, get_internal_pos, get_internal_home_pos, geofencefile = None, rate = 1):
         StoppableThread.__init__(self)
@@ -62,6 +70,7 @@ class GpsMonitor(StoppableThread):
                external_pos['timestamp'] == None \
                or internal_pos['timestamp'] == None:
                 self.signal(GpsMonitor.STATE_NO_FIX_YET)
+                logger.info(' STATE_NO_FIX_YET')
                 time.sleep(float(1) / float(self.rate))
                 continue
             #print json.dumps(external_pos)
@@ -75,23 +84,36 @@ class GpsMonitor(StoppableThread):
                 source = self.find_source(GpsMonitor.STATE_LOST,external_state,internal_state)
                 # If necessary check for source here and send a GpsMonitor.STATE_LOST_BOTH if deemed necessary
                 self.signal(GpsMonitor.STATE_LOST,source)
+                logger.info(' STATE_LOST')
             elif external_state == GpsMonitor.STATE_TIMEOUT or internal_state == GpsMonitor.STATE_TIMEOUT:
                 source = self.find_source(GpsMonitor.STATE_TIMEOUT,external_state,internal_state)
                 self.signal(GpsMonitor.STATE_TIMEOUT, source)
+                logger.info(' STATE_TIMEOUT')
             else:
                 # Check for mismatch
                 external_pos_utm = utm.from_latlon(external_pos['position']['lat'], external_pos['position']['lng'])
                 internal_pos_utm = utm.from_latlon(internal_pos['position']['lat'], internal_pos['position']['lng'])
                 dist = sqrt((external_pos_utm[0]-internal_pos_utm[0])**2 + \
                        (external_pos_utm[1]-internal_pos_utm[1])**2)
-                if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE:
+                # Include time difference in calculations to allow for "errors" due to different fix times
+                time_diff = abs(external_pos['timestamp'] - internal_pos['timestamp']) # Time difference between gps stamps
+                if dist <= GpsMonitor.MISMATCH_DISTANCE_ACCEPTANCE_VALUE + time_diff*GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_DELAY and \
+                    dist <= GpsMonitor.MISMATCH_DEVIATION_ACCEPTANCE_MAX:
                     if not self.geofence is None:
-                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['position']['alt'])):
+                        if self.geofence.is_point_legal((internal_pos_utm[0], internal_pos_utm[1], internal_pos['position']['alt']-internal_home_pos['alt'])):
                             self.signal(GpsMonitor.STATE_OK)
+                            logger.info(' STATE_OK')
                         else:
-                            self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)
+                            distance_to_fence = self.geofence.distance_to_fence((internal_pos_utm[0],internal_pos_utm[1]))
+                            if distance_to_fence < GpsMonitor.TERMINATE_DISTANCE:
+                                self.signal(GpsMonitor.STATE_GEOFENCE_BREACH)
+                                logger.info(' STATE_GEOFENCE_BREACH')
+                            else:
+                                self.signal(GpsMonitor.STATE_GEOFENCE_BREACH_CRITICAL)
+                                logger.info(' STATE_GEOFENCE_BREACH_CRITICAL')
                 else:
                     self.signal(GpsMonitor.STATE_MISMATCH)
+                    logger.info(' STATE_MISMATCH')
 
             # Sleep to obtain desired frequency
             time.sleep(float(1)/float(self.rate))
@@ -123,6 +145,7 @@ class Geofence:
         self.fence = self.load_from_file(fence)
         self.obstacles = obstacles
         self.maxHeight = float(maxHeight)
+        self.polygon = Polygon(self.fence)
 
     def load_from_file(self,file):
         count = 0
@@ -144,6 +167,10 @@ class Geofence:
         logger.info('Loaded geofence with %i points', count)
 
         return points
+
+    def distance_to_fence(self, test_point):
+       # print self.polygon
+        return self.polygon.distance(Point(test_point[0],test_point[1]))
 
     def is_point_legal(self, point3d):
         x = point3d[0]
@@ -221,12 +248,16 @@ class Geofence:
 
         return cn % 2  # 0 if even (out), and 1 if odd (in)
 
-
 class Obstacle:
     def __init__(self,points, height):
         self.points = points
         self.height = height
 
+
+def test_polygon():
+    fence_points = [(0, 0), (0, 2), (2, 2), (2, 0)]
+    fence = Geofence("/home/mathias/UASD/git/UASD/OES/src/test_fence.csv",convert_to_utm=False)
+    print fence.distance_to_fence((0,-1))
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -245,4 +276,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+#    main()
+    test_polygon()

@@ -23,7 +23,7 @@ class StoppableThread(threading.Thread):
 
 
 class GsmListener(StoppableThread):
-    HEARTBEAT_TIMEOUT = 5.0
+    HEARTBEAT_TIMEOUT = 10.0
 
     def __init__(self, pika_connection_string, topic='/toGcs'):
         StoppableThread.__init__(self)
@@ -57,7 +57,9 @@ class GsmListener(StoppableThread):
             method, properties, body = message
             self.channel.basic_ack(method.delivery_tag)
             decoded = json.loads(body)
+            print decoded
             if decoded['type'] == 'HEARTBEAT':
+                #print 'Received Heartbeat:',decoded['connectionState'],decoded['gpsState']
                 with self.heartbeat_lock:
                     self.last_heartbeat = time.time()
                 self.receive_queue.put(decoded)
@@ -68,8 +70,9 @@ class GsmListener(StoppableThread):
     def handle_receive_queue(self):
         #rospy.loginfo('handler')
         while not self.receive_queue.empty():
-            rospy.loginfo('received')
+            #rospy.loginfo('received')
             msg = self.receive_queue.get()
+            #print json.dumps(msg)
             self.from_drone_publisher.publish(json.dumps(msg))
 
     def check_heartbeat(self):
@@ -83,7 +86,7 @@ class GsmListener(StoppableThread):
 
 
 def main():
-    rospy.init_node('gsm_talker')
+    rospy.init_node('gsm_listener')
     rospy.loginfo('Started')
     pika_connection_string = 'amqp://wollgvkx:6NgqFYICcYPdN08nHpQMktCoNS2yf2Z7@lark.rmq.cloudamqp.com/wollgvkx'
     gsmListener = GsmListener(pika_connection_string)

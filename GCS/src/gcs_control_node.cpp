@@ -5,6 +5,7 @@
 #include "gcs/waypoint.h"
 #include "gcs/uploadMission.h"
 #include "gcs/arm.h"
+#include "gcs/land.h"
 #include "gcs/deploy_request.h"
 #include "gcs/startMission.h"
 #include "gcs/dockData.h"
@@ -62,6 +63,7 @@ class GCS_CONTROL_CLASS
 		ros::ServiceClient plan_path_service_client;
 		ros::ServiceClient upload_mission_service_client;
 		ros::ServiceClient arm_service_client;
+		ros::ServiceClient land_service_client;
 		ros::ServiceClient start_mission_service_client;
 		ros::ServiceClient open_dock_service_client;
 		ros::ServiceClient pre_flight_service_client;
@@ -76,6 +78,8 @@ class GCS_CONTROL_CLASS
 		void missionStateSubscriberCallback(const mavros_msgs::WaypointList::ConstPtr& msg);
 		ros::Subscriber dock_data_subscriber;
 		void dockDataSubscriberCallback(const gcs::dockData::ConstPtr& msg);
+		ros::Subscriber gsm_heartbeat_subscriber;
+		void gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg);
 
 		ros::Publisher uav_state_publisher;
 		ros::Publisher mission_completed_publisher;
@@ -99,6 +103,7 @@ class GCS_CONTROL_CLASS
 		std::vector<double> dock_voltage = {0, 0, 0, 0};
 		double outside_temperature = 0, outside_humidity = 0, wind_speed = 0;
 		double battery_voltage = 0;
+		bool gsm_heartbeat_status = 0;
 
 	// 1 Monitor docking station
 	// - Call service monitorDock() from docking_station_node
@@ -135,6 +140,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	plan_path_service_client = nh.serviceClient<gcs::planPath>("/path_planner/plan");
 	upload_mission_service_client = nh.serviceClient<gcs::uploadMission>("/drone_communication/uploadMission");
 	arm_service_client = nh.serviceClient<gcs::arm>("/drone_communication/arm");
+	land_service_client = nh.serviceClient<gcs::land>("/drone_communication/land");
 	start_mission_service_client = nh.serviceClient<gcs::startMission>("drone_communication/startMission");
 	open_dock_service_client = nh.serviceClient<gcs::openDock>("/docking_station/openDock");
 	pre_flight_service_client = nh.serviceClient<gcs::preFlight>("/pre_flight_node/preFlight");
@@ -144,6 +150,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	drone_gps_subscriber = nh.subscribe<sensor_msgs::NavSatFix>("/drone_communication/globalPosition",1,&GCS_CONTROL_CLASS::droneGpsSubscriberCallback,this);
 	mission_state_subscriber = nh.subscribe<mavros_msgs::WaypointList>("/drone_communication/missionState",1,&GCS_CONTROL_CLASS::missionStateSubscriberCallback, this);
 	dock_data_subscriber = nh.subscribe<gcs::dockData>("/docking_station/dock_data",1,&GCS_CONTROL_CLASS::dockDataSubscriberCallback, this);
+	gsm_heartbeat_subscriber = nh.subscribe<std_msgs::Bool>("/gsm_listener/heartbeat",1,&GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback, this);
 
 	uav_state_publisher = nh.advertise<std_msgs::String>("/web_interface/listen/set_uav_state",1);
 	mission_completed_publisher = nh.advertise<std_msgs::Bool>("web_interface/listen/mission_done",1);
@@ -152,6 +159,7 @@ GCS_CONTROL_CLASS::GCS_CONTROL_CLASS(ros::NodeHandle n)
 	std_msgs::String msg;
 	msg.data = "idle";
 	uav_state_publisher.publish(msg);
+	ROS_INFO("[gcs_control] Node started.");
 }
 
 void GCS_CONTROL_CLASS::run()
@@ -163,24 +171,24 @@ void GCS_CONTROL_CLASS::run()
 				if ( dock_temperature > 35 ||
 					 dock_temperature< 15 )
 				{
-					ROS_INFO("Check docking station conditions.");
+					ROS_INFO("[gcs_control] Check docking station conditions.");
 				}
 				if ( dock_temperature > 50 ||
 					 dock_temperature < 0 )
 				{
-					ROS_ERROR("Docking station conditions critical.");
+					ROS_ERROR("[gcs_control] Docking station conditions critical.");
 				}
-				// ROS_INFO("Battery cell voltages:\t%f\t%f\t%f\t%f",
+				// ROS_INFO("[gcs_control] Battery cell voltages:\t%f\t%f\t%f\t%f",
 				// 			dock_voltage[0], dock_voltage[1],
 				// 			dock_voltage[2], dock_voltage[3]);
 
 				// Continuosly monitor drone and docking station
-				ROS_INFO("IDLE");
+				ROS_INFO("[gcs_control] IDLE");
 			}
 			break;
 		case RECEIVED_DISTRESS_CALL:
 			{
-				ROS_INFO("RECEIVED_DISTRESS_CALL");
+				ROS_INFO("[gcs_control] RECEIVED_DISTRESS_CALL");
 
 				// Start path planning
 				gcs::planPath path_request;
@@ -190,31 +198,33 @@ void GCS_CONTROL_CLASS::run()
 				path_request.request.goal.lat = deploy_request.point.lat;
 				path_request.request.goal.lon = deploy_request.point.lon;
 				path_request.request.goal.alt = 0;
-				if ( !plan_path_service_client.call(path_request) ) {
-					ROS_ERROR("Plan path failed");
+				bool ppcall = plan_path_service_client.call(path_request);
+				if ( !ppcall || !path_request.response.result) {
+					ROS_ERROR("[gcs_control] Plan path failed");
 					// state unchanged
+					state = PREPARE;
 				}
 				else state = PREPARE;
 			}
 			break;
 		case PREPARE:
 			{
-				ROS_INFO("PREPARE");
+				ROS_INFO("[gcs_control] PREPARE");
 
 				if( mission_upload_state == PATH_RECEIVED )
 				{
-					ROS_INFO("Trying to upload");
+					ROS_INFO("[gcs_control] Trying to upload");
 					gcs::uploadMission mission_upload_msg;
 					mission_upload_msg.request.waypoints = planned_path;
 					if( upload_mission_service_client.call(mission_upload_msg) && mission_upload_msg.response.result == SUCCESS )
 					{
 						mission_upload_state = UPLOAD_SUCCESS;
-						ROS_INFO("Upload succeeded.");
+						ROS_INFO("[gcs_control] Upload succeeded.");
 					}
 					else
 					{
 						mission_upload_state = UPLOAD_ERROR;
-						ROS_ERROR("Failed to upload mission");
+						ROS_ERROR("[gcs_control] Failed to upload mission");
 					}
 				}
 				// if weather ok, open docking station
@@ -226,7 +236,7 @@ void GCS_CONTROL_CLASS::run()
 					outside_humidity = pre_flight_msg.response.humidity;
 					wind_speed = pre_flight_msg.response.windSpeed;
 					battery_voltage = pre_flight_msg.response.voltage;
-					// ROS_INFO("Pre-flight info: Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f\tLat: %f\tLon: %f",
+					// ROS_INFO("[gcs_control] Pre-flight info: Tmp: %f\tHmd: %f\tSpd: %f\tVlt: %f\tLat: %f\tLon: %f",
 					// 			outside_temperature, outside_humidity, wind_speed, battery_voltage,
 					// 			pre_flight_msg.response.latitude, pre_flight_msg.response.longitude);
 					if ( pfcheck && pre_flight_msg.response.result == true)
@@ -238,11 +248,11 @@ void GCS_CONTROL_CLASS::run()
 						msg.wind = wind_speed;
 						uav_preflight_set_publisher.publish(msg);
 						state = WAIT_FOR_READY;
-						ROS_INFO("WAIT_FOR_READY");
+						ROS_INFO("[gcs_control] WAIT_FOR_READY");
 					}
 					else
 					{
-						ROS_ERROR("Pre-flight check failed.");
+						ROS_ERROR("[gcs_control] Pre-flight check failed.");
 					}
 				}
 			}
@@ -254,16 +264,16 @@ void GCS_CONTROL_CLASS::run()
 				if ( open_dock_service_client.call(open_dock_msg) && open_dock_msg.response.dockIsOpen == true)
 				{
 					state = DEPLOY;
-					ROS_INFO("DEPLOY");
+					ROS_INFO("[gcs_control] DEPLOY");
 				}
 				else
-					ROS_ERROR("Failed to open docking station.");
+					ROS_ERROR("[gcs_control] Failed to open docking station.");
 			}
 			break;
 		case DEPLOY:
 			{
 				// TODO: See why we go here after killing the docking station node.
-				ROS_INFO("DEPLOY");
+				ROS_INFO("[gcs_control] DEPLOY");
 				//If everything ok -> arm the drone
 				gcs::startMission start_msg;
 				if( start_mission_service_client.call(start_msg) && start_msg.response.result == SUCCESS)
@@ -272,11 +282,11 @@ void GCS_CONTROL_CLASS::run()
 					std_msgs::String msg;
 					msg.data = "transport";
 					uav_state_publisher.publish(msg);
-					ROS_INFO("FLYING");
+					ROS_INFO("[gcs_control] FLYING");
 
 				}
 				else
-					ROS_ERROR("Failed to arm");
+					ROS_ERROR("[gcs_control] Failed to arm");
 
 					// gcs::arm arm_msg;
 					// if( arm_service_client.call(arm_msg) && arm_msg.response.result == SUCCESS)
@@ -285,11 +295,11 @@ void GCS_CONTROL_CLASS::run()
 					// 	std_msgs::String msg;
 					// 	msg.data = "transport";
 					// 	uav_state_publisher.publish(msg);
-					// 	ROS_INFO("FLYING");
+					// 	ROS_INFO("[gcs_control] FLYING");
 					//
 					// }
 					// else
-					// 	ROS_ERROR("Failed to arm");
+					// 	ROS_ERROR("[gcs_control] Failed to arm");
 			}
 			break;
 		case FLYING:
@@ -297,7 +307,7 @@ void GCS_CONTROL_CLASS::run()
 				if( last_waypoint == (number_of_waypoints-1) && current_waypoint == 0 )
 				{
 					state = ARRIVED;
-					ROS_INFO("ARRIVED");
+					ROS_INFO("[gcs_control] ARRIVED");
 					std_msgs::String msg;
 					msg.data = "landed";
 					uav_state_publisher.publish(msg);
@@ -305,6 +315,18 @@ void GCS_CONTROL_CLASS::run()
 					mission_completed_publisher.publish(complete_msg);
 				}
 				// Monitor during flight
+				if(!gsm_heartbeat_status) 
+				{
+					ROS_ERROR("[gcs_control] GSM HEARTBEAT LOST. LANDING AT CURRENT LOCATION.");
+					// Issue land command
+					gcs::land land_msg;
+					if( land_service_client.call(land_msg) && land_msg.response.result == SUCCESS)
+					{
+						ROS_INFO("[gcs_control] Emergency landing command successful.");
+						state = ARRIVED;
+					}
+					else ROS_ERROR("[gcs_control] EMERGENCY LANDING COMMAND FAILED.");
+				}
 			}
 			break;
 		case ARRIVED:
@@ -314,7 +336,7 @@ void GCS_CONTROL_CLASS::run()
 			}
 			break;
 		default:
-			ROS_ERROR("Bad state");
+			ROS_ERROR("[gcs_control] Bad state");
 			/* Default Code */
 	}
 
@@ -324,7 +346,7 @@ void GCS_CONTROL_CLASS::pathSubscriberCallback(const gcs::path::ConstPtr& msg)
 {
 	planned_path = *msg;
 	mission_upload_state = PATH_RECEIVED;
-	ROS_INFO("Path callback");
+	ROS_INFO("[gcs_control] Path callback");
 }
 
 void GCS_CONTROL_CLASS::deploySubscriberCallback(const gcs::deploy_request::ConstPtr& msg)
@@ -347,7 +369,7 @@ void GCS_CONTROL_CLASS::missionStateSubscriberCallback(const mavros_msgs::Waypoi
 		if( msg->waypoints[i].is_current == true)
 		{
 			current_waypoint = i;
-			ROS_INFO("Reached waypoint %i", current_waypoint);
+			ROS_INFO("[gcs_control] Reached waypoint %i", current_waypoint);
 			break;
 		}
 	}
@@ -359,7 +381,11 @@ void GCS_CONTROL_CLASS::dockDataSubscriberCallback(const gcs::dockData::ConstPtr
 	dock_temperature = dock_sensor_data.temperature;
 	dock_humidity = dock_sensor_data.humidity;
 	dock_voltage = dock_sensor_data.voltage;
-	// dock_sensor_data = *msg;
+}
+
+void GCS_CONTROL_CLASS::gsmHeartbeatSubscriberCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+	gsm_heartbeat_status = msg->data;
 }
 
 GCS_CONTROL_CLASS::~GCS_CONTROL_CLASS()

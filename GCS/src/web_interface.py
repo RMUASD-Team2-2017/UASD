@@ -36,16 +36,16 @@ class web_interface:
             r = requests.post(url = get_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
         except:
             print 'Unexpected error in polling get_requests'
-            return (-5, lat, lng, alt)
+            return (-5, lat, lng, alt, self.request_id)
         #print "The request status is", r.status_code
         if r.text == '0' or int(r.status_code) != 200: # Handle empty response
-            return (-1, lat, lng, alt)
+            return (-1, lat, lng, alt, self.request_id)
         jsonformat = ''
         try:
             jsonformat = json.loads(r.text) # convert to json
         except:
             print 'Unexpected error in parsing r.text as json'
-            return (-2, lat, lng, alt)
+            return (-2, lat, lng, alt, self.request_id)
         if(not self.active and int(jsonformat[0]["completed"]) == 0):   # If a mission is not active and the newest request is uncompleted
             print "Got a new request"
             self.request_id = jsonformat[0]["request_id"]
@@ -60,16 +60,16 @@ class web_interface:
                 r_specific = requests.post(url = get_specific_requests_url,auth=HTTPBasicAuth(self.username,self.password),data=payload)
             except:
                 print 'Unexpected error in polling get_specific_request'
-                return (-6, lat, lng, alt)
+                return (-6, lat, lng, alt, self.request_id)
             print "The position status is", r.status_code
             if r_specific.text == 'null' or r_specific.text == '0' or int(r.status_code) != 200:
-                return (-3, lat, lng, alt)
+                return (-3, lat, lng, alt, self.request_id)
             jsonformat_specific = ''
             try:
                 jsonformat_specific = json.loads(r_specific.text)
             except:
                 print 'Unexpected error in parsing r_specific as json'
-                return (-4, lat, lng, alt)
+                return (-4, lat, lng, alt, self.request_id)
             print '*****************************************************'
             # If using the non-single get_specific_request_url, use the indexing below
             #print jsonformat_specific[0]
@@ -85,7 +85,7 @@ class web_interface:
             print lat, lng, alt
             self.update_count = self.update_count + 1
 
-        return (self.update_count, lat, lng, alt)
+        return (self.update_count, lat, lng, alt, self.request_id)
 
     def setMissionDone(self,data):
         # UNCOMMENT THIS TO TEST. IT WILL ALLOW TO COMPLETE MORE MISSIONS WITHOUT RESTART OF THIS NODE
@@ -171,7 +171,7 @@ class web_interface:
             except:
                 print 'Unexpected in set_uav_current_location'
                 return -10
-            print 'setCurrentLocation result: ', r.text
+            #print 'setCurrentLocation result: ', r.text
         # Count up but limit. Input: 20 Hz. WIth % 10 -> output: 2 Hz
         self.position_publish_limit_counter = (self.position_publish_limit_counter + 1) % 20
 

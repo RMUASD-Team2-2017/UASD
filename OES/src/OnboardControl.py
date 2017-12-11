@@ -1,7 +1,7 @@
 import threading
 import time
 import logging
-from DroneHandler import DroneHandler
+from DroneHandler import DroneHandler, DroneHandler_pymavlink
 from GpsMonitor import GpsMonitor
 from ConnectionMonitor import ConnectionMonitor
 
@@ -37,6 +37,7 @@ class OnboardControl(StoppableThread):
         self.signal_drone_heartbeat_lock = threading.Lock()
         self.signal_gsm_lock = threading.Lock()
         self.signal_connection_state_lock = threading.Lock()
+        self.ready_lock = threading.Lock()
         self.gps_state = None
         self.gps_source = None
         self.drone_heartbeat = time.time()
@@ -49,7 +50,7 @@ class OnboardControl(StoppableThread):
 
         self.signal_queue = drone_handler_signal_queue
 
-        self.action_list_terminate = [] # ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
+        self.action_list_terminate = [] # GpsMonitor.STATE_GEOFENCE_BREACH_CRITICAL and ConnectionMonitor.STATE_CON_SERIAL2_LOST should be here... I don't dare it yet
         self.action_list_land_here = [GpsMonitor.STATE_LOST, GpsMonitor.STATE_GEOFENCE_BREACH]
         self.action_list_return_to_launch = [OnboardControl.CONNECTION_LOST,
                                              ConnectionMonitor.STATE_CON_TELEMETRY_OK_GSM_LOST,
@@ -91,13 +92,19 @@ class OnboardControl(StoppableThread):
         with self.signal_connection_state_lock:
             self.connection_state = state
 
+    def get_readiness(self):
+        with self.ready_lock:
+            return self.ready
+
     def run(self):
         logger.info('OnboardControl started')
+        time.sleep(15)
+        logger.info('OnboardControl ready')
         while self.stop_event.is_set() is False:
 
-            # Update heartbeat
-            while not self.signal_queue.empty():
-                self.drone_heartbeat = self.signal_queue.get()
+            # Update heartbeat - DEPRECATED, checked by connection_monitor
+            #while not self.signal_queue.empty():
+            #    self.drone_heartbeat = self.signal_queue.get()
 
             while not self.gsm_command_queue.empty():
                 msg = self.gsm_command_queue.get()
@@ -110,17 +117,49 @@ class OnboardControl(StoppableThread):
                 elif msg['type'] == 'ACTION_RETURN_TO_LAUNCH':
                     self.command_return_to_launch = True
                     logger.info('GSM_COMMAND: Return to launch')
+                elif msg['type'] == 'ACTION_PAUSE_LANDING':
+                    self.land_here_paused = True
+                    self.drone_handler.loiter()
+                    logger.info('GSM_COMMAND: Pause landing')
+                elif msg['type'] == 'ACTION_NEURAL':
+                    logger.info('GSM_COMMAND: Resume landing')
+                    if self.land_here_paused:
+                        self.land_here_paused = False
+                        self.drone_handler.land_at_current_location()
+
+            # Publish states to the gsm node
+            if self.connection_state:
+                connection_msg = {'type': 'CONNECTION_STATE', 'value': self.connection_state}
+                self.gsm_command_queue.put(connection_msg)
+            if self.gps_state:
+                gps_msg = {'type': 'GPS_STATE', 'value': self.gps_state}
+                self.gsm_command_queue.put(gps_msg)
+
 
             # We should never override manual mode
             mode = self.drone_handler.get_mode()
             if mode == DroneHandler.MANUAL_MODE or mode == None:
-                logger.debug("NO ONBOARD CONTROL: Manual mode or no mode yet")
+                logger.info("NO ONBOARD CONTROL: Manual mode or no mode yet")
                 # Sleep to obtain desired rate
                 time.sleep(1.0 / self.rate)
                 # Skip the rest of the loop and start over
                 continue
 
-            # Monitor heartbeat from dronekit
+            # We should not override while on ground or when we have completed the mission
+            # We should also check if we are in an acceptable state to start a mission
+            state = self.drone_handler.get_state()
+            if state == DroneHandler_pymavlink.STATE_IDLE or state == DroneHandler_pymavlink.STATE_LANDED:
+
+                terminate = self.check_states(self.action_list_terminate)
+                land_here = self.check_states(self.action_list_land_here)
+                return_to_launch = self.check_states(self.action_list_return_to_launch)
+                wait_here = self.check_states(self.action_list_wait_here)
+                self.ready = terminate and land_here and return_to_launch and wait_here # This should be captured and sent by the gsm thread on request
+                logger.info("NO ONBOARD CONTROL: Idle or Landed state")
+                time.sleep(1.0 / self.rate)
+                continue
+
+            # Monitor heartbeat from dronekit - DEPRECATED. Handled by connection monitor
             # Lock is not required, just kept for remembrance if we should change something
             # This should probably be moved to connection monitor
             #with self.signal_drone_heartbeat_lock:
@@ -179,9 +218,10 @@ class OnboardControl(StoppableThread):
 
     def check_states(self,action_list):
         ret = (self.check_state(self.gps_state,action_list) or \
-               self.check_state(self.drone_connection_state, action_list) or \
-               self.check_state(self.gsm_connection_state, action_list) or \
                self.check_state(self.connection_state, action_list))
+        # DEPRECATED. Handled by connection_monitor
+        #self.check_state(self.drone_connection_state, action_list) or \
+        #self.check_state(self.gsm_connection_state, action_list) or \
         return ret
 
     def disable_wait_here(self):

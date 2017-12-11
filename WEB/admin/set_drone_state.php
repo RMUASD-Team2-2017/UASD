@@ -10,7 +10,7 @@
     $drone_id = $_POST['drone_id'];
     $state = $_POST['state'];
 
-    if ($state != '') {
+    if ($state != '' && ( $state == 'idle' || $state == 'takeoff' || $state == 'transport' || $state == 'landing' || $state == 'landed' || $state == 'maintenance' ||  $state == 'error' ) ) {
         $sql = "UPDATE `AED_drone_list` SET `state` = '$state' WHERE  `id` = '$drone_id'";
         $result = mysqli_query($con, $sql);          //query
 

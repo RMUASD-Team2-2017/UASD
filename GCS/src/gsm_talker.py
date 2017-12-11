@@ -6,6 +6,7 @@ import threading
 import time
 from gcs.msg import toDroneData
 from Queue import Queue
+from std_msgs.msg import String
 
 
 class GsmTalker:
@@ -13,6 +14,8 @@ class GsmTalker:
     def __init__(self, pika_connection_string, topic="/toDrone", heartbeat_rate=1.0):
         self.send_to_drone_subscriber = rospy.Subscriber("gsm_talker/toDrone", toDroneData,
                                                          self.send_to_drone_subscriber_callback, queue_size=10)
+        self.request_id_subscriber = rospy.Subscriber("/web_interface/request_id", String, self.requestIdCallback,
+                                                                          queue_size=1)
         self.topic = topic
         parameters = pika.URLParameters(pika_connection_string)
         self.connection = pika.BlockingConnection(parameters)
@@ -21,11 +24,16 @@ class GsmTalker:
         self.transmit_queue = Queue()
         self.heartbeat_timer = None
         self.heartbeat_rate = heartbeat_rate
+        self.request_id = '0'
 
     def send_to_drone_subscriber_callback(self,data):
         msg = {'type': data.type,
                'value': data.value}
         self.transmit_queue.put(msg)
+
+    def requestIdCallback(self, data):
+        self.request_id = data.data
+
 
     def run(self):
         while not self.transmit_queue.empty():
@@ -49,7 +57,7 @@ class GsmTalker:
         self.heartbeat_timer.start()
 
         # Publish the message
-        msg = {'type': 'HEARTBEAT', 'value': time.time()}
+        msg = {'type': 'HEARTBEAT', 'value': time.time(), 'uuid': self.request_id}
         self.transmit_queue.put(msg)
 
     def start_heartbeat(self):

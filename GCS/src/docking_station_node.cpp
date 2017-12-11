@@ -37,6 +37,7 @@ DOCKING_STATION_CLASS::DOCKING_STATION_CLASS(ros::NodeHandle *nh)
 
     // Topics
     pub = nh->advertise<gcs::dockData>("/docking_station/dock_data", 1000);
+	ROS_INFO("[docking_station] Node started.");
 }
 
 DOCKING_STATION_CLASS::~DOCKING_STATION_CLASS()

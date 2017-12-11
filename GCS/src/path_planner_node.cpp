@@ -62,10 +62,10 @@ gcs::path planPath()
 
     // Find the path to the geofence file
     std::string geofence_file;
-    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/fences/geofence.csv");
+    ros::param::param<std::string>("/geofence_file", geofence_file, ros::package::getPath("gcs") + "/src/fences/airport_advanced_geofence.csv");
 
     // Load geofence file
-    bool fence_load_sucess= fence.set_fence_csv(geofence_file, true);
+    bool fence_load_sucess= fence.set_fence_csv(geofence_file, false);
 
     if(fence_load_sucess)
     {

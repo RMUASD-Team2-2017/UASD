@@ -3,6 +3,11 @@
         // Require DB config
         require('config.php');
 
+
+        $file = 'admin/db.log';
+        // Open the file to get existing content
+        $current = file_get_contents($file);
+
         //--------------------------------------------------------------------------
         // 1) Connect to mysql database
         //--------------------------------------------------------------------------
@@ -14,8 +19,8 @@
         //--------------------------------------------------------------------------
         // 2) Query database for data
         //--------------------------------------------------------------------------
-        $lat = $_POST['lat'];
-        $lng = $_POST['lng'];
+        $lat = round((float)$_POST['lat'],5);
+        $lng = round((float)$_POST['lng'],5);
         $GPS_timestamp = $_POST['GPS_timestamp'];
 
         $loc_accuracy = $_POST['loc_accuracy'];
@@ -33,17 +38,24 @@
         // Set default
         $return_time = "estimating";
         $drone_state = "dispatching";
-        // Check if it is completely new information / a new request
-        $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
-        //$sql = "SELECT EXISTS(SELECT 1 FROM `AED_requests` WHERE `request_id` = '$request_id_md5');";
-        $result = mysqli_query($con, $sql);          //query
-        //$array = mysqli_fetch_row($result);                          //fetch result
-        //if (empty($array)) {
-        if (mysqli_num_rows($result) == 0) {
-            $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '');";
+
+        if ($GPS_timestamp == $request_id) {
+            // Check if it is completely new information / a new request
+            $sql = "SELECT * FROM `AED_requests` WHERE  `request_id` =$request_id_md5 ORDER BY  `int_id` DESC";
             $result = mysqli_query($con, $sql);          //query
+            if (mysqli_num_rows($result) == 0) {
+                $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`, `approved`, `stopped`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '', '0', '0');";
+                $result = mysqli_query($con, $sql);          //query
+            } else {
+                // Append to file
+                $current .= "ERROR CAUGHT: "."request_id:".$request_id_md5.",GPS_timestamp:".$GPS_timestamp.",first_GPS_timestamp:".$request_id.",time:".$time.",ip:".$ip.",browser:".$browser."\n";
+                // Write the contents back to the file
+                file_put_contents($file, $current);
+            }
         } else {
             // See if a drone has been dispatched
+            $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
+            $result = mysqli_query($con, $sql);          //query
             $array = mysqli_fetch_row($result);                          //fetch result
             if (!empty($array[1])) {
                 // Drone has been dispatched
@@ -53,9 +65,38 @@
                     //$result = mysqli_query($con, $sql);          //query
                     //$array = mysqli_fetch_row($result);          //fetch result
                     //$drone_state = $array[6]; // Drone state
-                $drone_state = "dispatched";
+                if ($array[6] == 'landed') {
+                    $drone_state = "landed";
+                } else {
+                    $drone_state = "dispatched";
+                }
             }
         }
+
+
+        // // Check if it is completely new information / a new request
+        // $sql = "SELECT * FROM `AED_requests` WHERE `request_id` = '$request_id_md5'";
+        // //$sql = "SELECT EXISTS(SELECT 1 FROM `AED_requests` WHERE `request_id` = '$request_id_md5');";
+        // $result = mysqli_query($con, $sql);          //query
+        // //$array = mysqli_fetch_row($result);                          //fetch result
+        // //if (empty($array)) {
+        // if (mysqli_num_rows($result) == 0) {
+        //     $sql = "INSERT INTO `AED_requests` (`int_id`, `drone_id`, `request_id`, `time`, `completed`, `eta`) VALUES (NULL, '', '$request_id_md5', '$time', '0', '');";
+        //     $result = mysqli_query($con, $sql);          //query
+        // } else {
+        //     // See if a drone has been dispatched
+        //     $array = mysqli_fetch_row($result);                          //fetch result
+        //     if (!empty($array[1])) {
+        //         // Drone has been dispatched
+        //         $return_time = date('Y-m-d H:i:s', strtotime($array[4]));
+        //         // Get drone state
+        //             //$sql = "SELECT * FROM `AED_drone_list` WHERE `id` = '$array[1]'";
+        //             //$result = mysqli_query($con, $sql);          //query
+        //             //$array = mysqli_fetch_row($result);          //fetch result
+        //             //$drone_state = $array[6]; // Drone state
+        //         $drone_state = "dispatched";
+        //     }
+        // }
 
         // Make a new entry for the new information
         $sql = "INSERT INTO `AED_smartphone_requests` (`int_id`, `id`, `loc_lat`, `loc_lng`, `req_time`, `timestamp`, `loc_accuracy`, `altitude`, `altitude_accuracy`) VALUES (NULL, '$request_id_md5', '$lat', '$lng', '$time', '$GPS_timestamp', '$loc_accuracy', '$altitude', '$altitude_accuracy');";
