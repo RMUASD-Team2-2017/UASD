@@ -209,11 +209,13 @@ void GCS_CONTROL_CLASS::run()
 				path_request.request.goal.lat = deploy_request.point.lat;
 				path_request.request.goal.lon = deploy_request.point.lon;
 				path_request.request.goal.alt = 0;
-				bool ppcall = plan_path_service_client.call(path_request);
-				if ( !ppcall || !path_request.response.result) {
+				//bool ppcall = plan_path_service_client.call(path_request);
+				//ROS_INFO("[gcs_control] Path planner service call:\n\tSuccess: %d\n\tResult: %d", ppcall, path_request.response.result);
+				//if ( !ppcall || !(path_request.response.result == true)) {
+				if ( !plan_path_service_client.call(path_request) ) {
 					ROS_ERROR("[gcs_control] Plan path failed");
 					// state unchanged
-					state = PREPARE;
+					// state = PREPARE;
 				}
 				else state = PREPARE;
 			}
