@@ -135,10 +135,10 @@ class OnboardControl(StoppableThread):
             # Publish states to the gsm node
             if self.connection_state:
                 connection_msg = {'type': 'CONNECTION_STATE', 'value': self.connection_state}
-                self.gsm_command_queue.put(connection_msg)
+                self.gsm_transmit_queue.put(connection_msg)
             if self.gps_state:
                 gps_msg = {'type': 'GPS_STATE', 'value': self.gps_state}
-                self.gsm_command_queue.put(gps_msg)
+                self.gsm_transmit_queue.put(gps_msg)
 
 
             # We should never override manual mode
