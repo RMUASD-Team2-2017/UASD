@@ -70,7 +70,7 @@ def handle_pre_flight_srv(req):
 
 	check = check & gsm_ok
 
-	return preFlightResponse(True, tmpt, hmd, wspd, battery_voltage, pos_latitude, pos_longitude)
+	return preFlightResponse(gsm_ok, tmpt, hmd, wspd, battery_voltage, pos_latitude, pos_longitude)
 
 def pre_flight():
 	global battery_voltage
